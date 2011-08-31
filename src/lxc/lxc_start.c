@@ -59,6 +59,7 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 	switch (c) {
 	case 'c': args->console = arg; break;
 	case 'd': args->daemonize = 1; args->close_all_fds = 1; break;
+	case 'e': args->exec = arg; break;
 	case 'f': args->rcfile = arg; break;
 	case 'C': args->close_all_fds = 1; break;
 	case 's': return lxc_config_define_add(&defines, arg);
@@ -68,6 +69,7 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 
 static const struct option my_longopts[] = {
 	{"daemon", no_argument, 0, 'd'},
+	{"exec", required_argument, 0, 'e'},
 	{"rcfile", required_argument, 0, 'f'},
 	{"define", required_argument, 0, 's'},
 	{"console", required_argument, 0, 'c'},
@@ -78,13 +80,14 @@ static const struct option my_longopts[] = {
 static struct lxc_arguments my_args = {
 	.progname = "lxc-start",
 	.help     = "\
---name=NAME -- COMMAND\n\
+--name=NAME [--exec=PROG] -- COMMAND\n\
 \n\
 lxc-start start COMMAND in specified container NAME\n\
 \n\
 Options :\n\
   -n, --name=NAME      NAME for name of the container\n\
   -d, --daemon         daemonize the container\n\
+  -e, --exec=PROG      Program to run in the container\n\
   -f, --rcfile=FILE    Load configuration file FILE\n\
   -c, --console=FILE   Set the file output for the container console\n\
   -C, --close-all-fds  If any fds are inherited, close them\n\

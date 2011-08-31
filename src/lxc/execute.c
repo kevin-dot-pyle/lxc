@@ -31,25 +31,45 @@
 
 lxc_log_define(lxc_execute, lxc_start);
 
+static int plan_arg_str(const int nbargs, const char *arg)
+{
+	if (!arg)
+		return nbargs;
+	return nbargs + 2;
+}
+
+static int add_arg_str(char **const argv, int nbargs, const char *opt, const char *arg)
+{
+	if (!arg)
+		return nbargs;
+	argv[nbargs++] = strdup(opt);
+	argv[nbargs++] = strdup(arg);
+	return nbargs;
+}
+
 static int execute_start(struct lxc_handler *handler, void* data)
 {
 	int j, i = 0;
 	struct lxc_execute_args *my_args = data;
 	char **argv;
 	int argc = 0;
+	int extra_argc = 0;
 
 	while (my_args->argv[argc++]);
+
+	extra_argc = plan_arg_str(extra_argc, my_args->exec);
 
 	/*
 	 * 3 = "lxc-init" + "--" + NULL
 	 */
-	argv = malloc((argc + 3 + (my_args->quiet ? 1 : 0)) * sizeof(*argv));
+	argv = malloc((argc + extra_argc + 3 + (my_args->quiet ? 1 : 0)) * sizeof(*argv));
 	if (!argv)
 		return 1;
 
 	argv[i++] = LXCINITDIR "/lxc-init";
 	if (my_args->quiet)
 		argv[i++] = "--quiet";
+	i = add_arg_str(argv, i, "--exec", my_args->exec);
 	argv[i++] = "--";
 	for (j = 0; j < argc; j++)
 		argv[i++] = my_args->argv[j];

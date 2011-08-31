@@ -6,6 +6,7 @@ extern "C" {
 #endif
 
 struct lxc_execute_args {
+	const char *exec;
 	char *const *argv;
 	int quiet;
 };

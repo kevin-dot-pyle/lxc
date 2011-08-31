@@ -62,6 +62,7 @@ struct lxc_arguments {
 	int close_all_fds;
 
 	/* remaining arguments */
+	const char *exec;
 	char *const *argv;
 	int argc;
 

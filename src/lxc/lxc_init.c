@@ -43,6 +43,7 @@ lxc_log_define(lxc_init, lxc);
 static int quiet;
 
 static struct option options[] = {
+	{ "exec", required_argument, 0, 'e' },
 	{ "quiet", no_argument, &quiet, 1 },
 	{ 0, 0, 0, 0 },
 };
@@ -61,6 +62,7 @@ int main(int argc, char *argv[])
 	pid_t pid;
 	int nbargs = 0;
 	int err = -1;
+	const char *program_to_exec = NULL;
 	char **aargv;
 	sigset_t mask, omask;
 	int i, shutdown = 0;
@@ -69,6 +71,10 @@ int main(int argc, char *argv[])
 		int ret = getopt_long_only(argc, argv, "", options, NULL);
 		if (ret == -1) {
 			break;
+		}
+		if (ret == 'e') {
+			program_to_exec = optarg;
+			continue;
 		}
 		if  (ret == '?')
 			exit(err);
@@ -88,6 +94,8 @@ int main(int argc, char *argv[])
 	}
 
 	aargv = &argv[optind];
+	if (!program_to_exec)
+		program_to_exec = aargv[0];
 	argc -= nbargs;
 
         /*
@@ -144,10 +152,10 @@ int main(int argc, char *argv[])
 
 		sigprocmask(SIG_SETMASK, &omask, NULL);
 
-		NOTICE("about to exec '%s'", aargv[0]);
+		NOTICE("about to exec '%s'", program_to_exec);
 
-		execvp(aargv[0], aargv);
-		ERROR("failed to exec: '%s' : %m", aargv[0]);
+		execvp(program_to_exec, aargv);
+		ERROR("failed to exec: '%s' : %m", program_to_exec);
 		exit(err);
 	}
 

@@ -58,6 +58,7 @@ static int my_checker(const struct lxc_arguments* args)
 static int my_parser(struct lxc_arguments* args, int c, char* arg)
 {
 	switch (c) {
+	case 'e': args->exec = arg; break;
 	case 'f': args->rcfile = arg; break;
 	case 's': return lxc_config_define_add(&defines, arg);
 	}
@@ -65,6 +66,7 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 }
 
 static const struct option my_longopts[] = {
+	{"exec", required_argument, 0, 'e'},
 	{"rcfile", required_argument, 0, 'f'},
 	{"define", required_argument, 0, 's'},
 	LXC_COMMON_OPTIONS
@@ -73,13 +75,14 @@ static const struct option my_longopts[] = {
 static struct lxc_arguments my_args = {
 	.progname = "lxc-execute",
 	.help     = "\
---name=NAME -- COMMAND\n\
+--name=NAME [--exec=PROG] -- COMMAND\n\
 \n\
 lxc-execute creates a container with the identifier NAME\n\
 and execs COMMAND into this container.\n\
 \n\
 Options :\n\
   -n, --name=NAME      NAME for name of the container\n\
+  -e, --exec=PROG      Program to run in the container\n\
   -f, --rcfile=FILE    Load configuration file FILE\n\
   -s, --define KEY=VAL Assign VAL to configuration variable KEY\n",
 	.options  = my_longopts,
@@ -138,6 +141,7 @@ int main(int argc, char *argv[])
 		return -1;
 
 	struct lxc_execute_args ea = {
+		.exec = my_args.exec,
 		.argv = my_args.argv,
 		.quiet = my_args.quiet,
 	};
