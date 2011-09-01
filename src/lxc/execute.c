@@ -58,6 +58,9 @@ static int execute_start(struct lxc_handler *handler, void* data)
 	while (my_args->argv[argc++]);
 
 	extra_argc = plan_arg_str(extra_argc, my_args->exec);
+	extra_argc = plan_arg_str(extra_argc, my_args->uid);
+	extra_argc = plan_arg_str(extra_argc, my_args->gid);
+	extra_argc = plan_arg_str(extra_argc, my_args->gidlist);
 
 	/*
 	 * 3 = "lxc-init" + "--" + NULL
@@ -70,6 +73,9 @@ static int execute_start(struct lxc_handler *handler, void* data)
 	if (my_args->quiet)
 		argv[i++] = "--quiet";
 	i = add_arg_str(argv, i, "--exec", my_args->exec);
+	i = add_arg_str(argv, i, "--uid", my_args->uid);
+	i = add_arg_str(argv, i, "--gid", my_args->gid);
+	i = add_arg_str(argv, i, "--gidlist", my_args->gidlist);
 	argv[i++] = "--";
 	for (j = 0; j < argc; j++)
 		argv[i++] = my_args->argv[j];

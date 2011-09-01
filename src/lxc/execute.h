@@ -7,6 +7,9 @@ extern "C" {
 
 struct lxc_execute_args {
 	const char *exec;
+	const char *uid;
+	const char *gid;
+	const char *gidlist;
 	char *const *argv;
 	int quiet;
 };

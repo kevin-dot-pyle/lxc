@@ -63,6 +63,9 @@ struct lxc_arguments {
 
 	/* remaining arguments */
 	const char *exec;
+	const char *uid;
+	const char *gid;
+	const char *gidlist;
 	char *const *argv;
 	int argc;
 

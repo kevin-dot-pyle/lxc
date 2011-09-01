@@ -61,6 +61,9 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 	case 'e': args->exec = arg; break;
 	case 'f': args->rcfile = arg; break;
 	case 's': return lxc_config_define_add(&defines, arg);
+	case 'g': args->gid = arg; break;
+	case 'G': args->gidlist = arg; break;
+	case 'u': args->uid = arg; break;
 	}
 	return 0;
 }
@@ -69,6 +72,9 @@ static const struct option my_longopts[] = {
 	{"exec", required_argument, 0, 'e'},
 	{"rcfile", required_argument, 0, 'f'},
 	{"define", required_argument, 0, 's'},
+	{"gid", required_argument, 0, 'g'},
+	{"gidlist", required_argument, 0, 'G'},
+	{"uid", required_argument, 0, 'u'},
 	LXC_COMMON_OPTIONS
 };
 
@@ -84,6 +90,9 @@ Options :\n\
   -n, --name=NAME      NAME for name of the container\n\
   -e, --exec=PROG      Program to run in the container\n\
   -f, --rcfile=FILE    Load configuration file FILE\n\
+  -g, --gid=GID        Run child as with gid GID\n\
+  -G, --gidlist=GIDLST Run child with supplemental groups GIDLST\n\
+  -u, --uid=UID        Run child as with uid UID\n\
   -s, --define KEY=VAL Assign VAL to configuration variable KEY\n",
 	.options  = my_longopts,
 	.parser   = my_parser,
@@ -142,6 +151,9 @@ int main(int argc, char *argv[])
 
 	struct lxc_execute_args ea = {
 		.exec = my_args.exec,
+		.uid = my_args.uid,
+		.gid = my_args.gid,
+		.gidlist = my_args.gidlist,
 		.argv = my_args.argv,
 		.quiet = my_args.quiet,
 	};

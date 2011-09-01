@@ -22,6 +22,8 @@
  */
 
 #include <stdio.h>
+#include <ctype.h>
+#include <grp.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -44,11 +46,56 @@ static int quiet;
 
 static struct option options[] = {
 	{ "exec", required_argument, 0, 'e' },
+	{ "gid", required_argument, 0, 'g' },
+	{ "gidlist", required_argument, 0, 'G' },
 	{ "quiet", no_argument, &quiet, 1 },
+	{ "uid", required_argument, 0, 'u' },
 	{ 0, 0, 0, 0 },
 };
 
 static	int was_interrupted = 0;
+
+static void parse_gidlist(const char *pi, size_t *total_groups, gid_t **result)
+{
+	const char *p;
+	unsigned count = 0;
+	*total_groups = 0;
+	*result = NULL;
+	for (p = pi; *p; ++p) {
+		const unsigned char c = *p;
+		if (isdigit(c))
+			continue;
+		if (c == ',')
+		{
+			++ count;
+			continue;
+		}
+		ERROR("gid list must be numeric separated by commas");
+		return;
+	}
+	if (++ count > 32)
+	{
+		ERROR("gid list exceeded arbitrary length limit");
+		return;
+	}
+	gid_t *pg = malloc(count * sizeof(gid_t));
+	if (!pg)
+	{
+		ERROR("failed to allocate gidlist: %m");
+		return;
+	}
+	*result = pg;
+	*total_groups = count;
+	for (p = pi; *p; ++p) {
+		char *e;
+		*pg++ = strtoul(p, &e, 10);
+		if (!*e)
+			break;
+		if (*e != ',')
+			break;
+		p = e;
+	}
+}
 
 int main(int argc, char *argv[])
 {
@@ -63,9 +110,17 @@ int main(int argc, char *argv[])
 	int nbargs = 0;
 	int err = -1;
 	const char *program_to_exec = NULL;
+	const char *gid = NULL;
+	const char *uid = NULL;
 	char **aargv;
 	sigset_t mask, omask;
 	int i, shutdown = 0;
+	uid_t nuid = 0;
+	gid_t ngid = 0;
+	size_t gidcount = 0;
+	gid_t *gidlist = NULL;
+	char *p;
+	int syncpipe[2];
 
 	while (1) {
 		int ret = getopt_long_only(argc, argv, "", options, NULL);
@@ -74,6 +129,22 @@ int main(int argc, char *argv[])
 		}
 		if (ret == 'e') {
 			program_to_exec = optarg;
+			continue;
+		}
+		if (ret == 'g') {
+			gid = optarg;
+			continue;
+		}
+		if (ret == 'G') {
+			if (gidlist)
+				free(gidlist);
+			parse_gidlist(optarg, &gidcount, &gidlist);
+			if (!gidlist)
+				exit(err);
+			continue;
+		}
+		if (ret == 'u') {
+			uid = optarg;
 			continue;
 		}
 		if  (ret == '?')
@@ -91,6 +162,20 @@ int main(int argc, char *argv[])
 	if (!argv[optind]) {
 		ERROR("missing command to launch");
 		exit(err);
+	}
+	if (uid) {
+		nuid = strtoul(uid, &p, 0);
+		if (*p) {
+			ERROR("uid must be numeric");
+			exit(err);
+		}
+	}
+	if (gid) {
+		ngid = strtoul(gid, &p, 0);
+		if (*p) {
+			ERROR("gid must be numeric");
+			exit(err);
+		}
 	}
 
 	aargv = &argv[optind];
@@ -136,28 +221,73 @@ int main(int argc, char *argv[])
 	if (lxc_setup_fs())
 		exit(err);
 
-	if (lxc_caps_reset())
+	if (pipe(syncpipe))
+	{
+		ERROR("pipe failed: %m");
 		exit(err);
-
+	}
 	pid = fork();
 
 	if (pid < 0)
 		exit(err);
 
 	if (!pid) {
+		ssize_t dummy;
+		char c;
+		close(syncpipe[1]);
 
 		/* restore default signal handlers */
 		for (i = 1; i < NSIG; i++)
 			signal(i, SIG_DFL);
 
 		sigprocmask(SIG_SETMASK, &omask, NULL);
+		dummy = read(syncpipe[0], &c, sizeof(c));
+		if (dummy < 0) {
+			ERROR("read failed: %m");
+			exit(err);
+		}
+		close(syncpipe[0]);
 
 		NOTICE("about to exec '%s'", program_to_exec);
+		if (gid) {
+			if (setgid(ngid)) {
+				ERROR("failed to setgid for '%s': %m", program_to_exec);
+				exit(err);
+			}
+			if (!gidlist) {
+				gidcount = 1;
+				gidlist = &ngid;
+			}
+		}
+		if (gidlist) {
+			if (setgroups(gidcount, gidlist)) {
+				ERROR("failed to setgroups for '%s': %m", program_to_exec);
+				exit(err);
+			}
+		}
+		if (uid) {
+			if (setuid(nuid)) {
+				ERROR("failed to setuid for '%s': %m", program_to_exec);
+				exit(err);
+			}
+		}
+
+		if (lxc_caps_reset())
+			exit(err);
 
 		execvp(program_to_exec, aargv);
 		ERROR("failed to exec: '%s' : %m", program_to_exec);
 		exit(err);
 	}
+	if (gidlist)
+		free(gidlist);
+	close(syncpipe[0]);
+
+	if (lxc_caps_reset()) {
+		kill(pid, SIGKILL);
+		exit(err);
+	}
+	close(syncpipe[1]);
 
 	/* let's process the signals now */
 	sigdelset(&omask, SIGALRM);
