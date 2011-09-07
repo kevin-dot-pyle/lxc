@@ -60,7 +60,7 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 	case 'c': args->console = arg; break;
 	case 'd': args->daemonize = 1; args->close_all_fds = 1; break;
 	case 'e': args->exec = arg; break;
-	case 'f': args->rcfile = arg; break;
+	case 'f': return lxc_config_define_add(&args->rcfile, arg);
 	case 'C': args->close_all_fds = 1; break;
 	case 's': return lxc_config_define_add(&defines, arg);
 	}
@@ -96,6 +96,7 @@ Options :\n\
 	.options   = my_longopts,
 	.parser    = my_parser,
 	.checker   = NULL,
+	.rcfile    = lxc_init_list(&my_args.rcfile),
 	.daemonize = 0,
 };
 
@@ -137,7 +138,7 @@ int main(int argc, char *argv[])
 		return err;
 	}
 
-	if (lxc_config_read(my_args.rcfile, my_args.name, conf)) {
+	if (lxc_config_read(&my_args.rcfile, my_args.name, conf)) {
 		ERROR("failed to read configuration file");
 		return err;
 	}
@@ -145,7 +146,7 @@ int main(int argc, char *argv[])
 	if (lxc_config_define_load(&defines, conf))
 		return err;
 
-	if (!my_args.rcfile && !strcmp("/sbin/init", args[0])) {
+	if (lxc_list_empty(&my_args.rcfile) && !strcmp("/sbin/init", args[0])) {
 		ERROR("no configuration file for '/sbin/init' (may crash the host)");
 		return err;
 	}

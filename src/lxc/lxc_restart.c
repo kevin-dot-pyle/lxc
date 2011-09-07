@@ -60,7 +60,7 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 {
 	switch (c) {
 	case 'S': args->statefile = arg; break;
-	case 'f': args->rcfile = arg; break;
+	case 'f': return lxc_config_define_add(&args->rcfile, arg);
 	case 'p': args->flags = LXC_FLAG_PAUSE; break;
 	case 's': return lxc_config_define_add(&defines, arg);
 	case 'd': {
@@ -102,6 +102,7 @@ Options :\n\
 	.options  = my_longopts,
 	.parser   = my_parser,
 	.checker  = my_checker,
+	.rcfile   = lxc_init_list(&my_args.rcfile),
 
 	.statefd  = -1,
 };
@@ -130,7 +131,7 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	if (lxc_config_read(my_args.rcfile, my_args.name, conf)) {
+	if (lxc_config_read(&my_args.rcfile, my_args.name, conf)) {
 		ERROR("failed to read configuration file");
 		return -1;
 	}

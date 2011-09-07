@@ -1034,12 +1034,19 @@ int lxc_config_readline(char *buffer, struct lxc_conf *conf)
 	return parse_line(buffer, conf);
 }
 
-int lxc_config_read(const char *file, const char *name, struct lxc_conf *conf)
+int lxc_config_read(const struct lxc_list *const files, const char *name, struct lxc_conf *conf)
 {
 	int rc;
 	char *rcfile;
-	if (file) {
-		return lxc_file_for_each_line(file, parse_line, conf);
+	if (!lxc_list_empty(files)) {
+		const struct lxc_list *li;
+		lxc_list_for_each(li, files) {
+			rcfile = li->elem;
+			rc = lxc_file_for_each_line(rcfile, parse_line, conf);
+			if (rc)
+				return rc;
+		}
+		return 0;
 	}
 	rc = asprintf(&rcfile, LXCPATH "/%s/config", name);
 	if (rc == -1) {

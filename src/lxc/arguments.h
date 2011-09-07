@@ -25,6 +25,7 @@
 #define __arguments_h
 
 #include <getopt.h>
+#include "list.h"
 
 struct lxc_arguments;
 
@@ -43,7 +44,7 @@ struct lxc_arguments {
 	char *log_priority;
 	int quiet;
 	int daemonize;
-	const char *rcfile;
+	struct lxc_list rcfile; // list of const char*
 	const char *console;
 
 	/* for lxc-checkpoint/restart */
