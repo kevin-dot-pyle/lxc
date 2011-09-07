@@ -82,6 +82,11 @@ struct lxc_arguments {
 	{"logpriority", required_argument, 0, 'l'}, \
 	{0, 0, 0, 0}
 
+#define LXC_HELP_COMMON_OPTIONS	\
+"  -n, --name=NAME      NAME for name of the container\n\
+  -f, --rcfile=FILE Load configuration file FILE\n\
+  -s, --define KEY=VAL Assign VAL to configuration variable KEY\n"
+
 /* option keys for long only options */
 #define	OPT_USAGE 0x1000
 

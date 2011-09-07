@@ -94,12 +94,11 @@ static struct lxc_arguments my_args = {
 lxc-restart restarts from FILE the NAME container\n\
 \n\
 Options :\n\
-  -n, --name=NAME      NAME for name of the container\n\
+" LXC_HELP_COMMON_OPTIONS "\
   -p, --pause          do not unfreeze the container after the restart\n\
   -S, --statefile=FILE read the container state from this file, or\n\
   -d, --statefd=FD read the container state from this file descriptor\n\
-  -f, --rcfile=FILE Load configuration file FILE\n\
-  -s, --define KEY=VAL Assign VAL to configuration variable KEY\n",
+",
 	.options  = my_longopts,
 	.parser   = my_parser,
 	.checker  = my_checker,

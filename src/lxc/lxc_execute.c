@@ -87,13 +87,12 @@ lxc-execute creates a container with the identifier NAME\n\
 and execs COMMAND into this container.\n\
 \n\
 Options :\n\
-  -n, --name=NAME      NAME for name of the container\n\
+" LXC_HELP_COMMON_OPTIONS "\
   -e, --exec=PROG      Program to run in the container\n\
-  -f, --rcfile=FILE    Load configuration file FILE\n\
   -g, --gid=GID        Run child as with gid GID\n\
   -G, --gidlist=GIDLST Run child with supplemental groups GIDLST\n\
   -u, --uid=UID        Run child as with uid UID\n\
-  -s, --define KEY=VAL Assign VAL to configuration variable KEY\n",
+",
 	.options  = my_longopts,
 	.parser   = my_parser,
 	.checker  = my_checker,

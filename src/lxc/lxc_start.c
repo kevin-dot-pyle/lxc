@@ -85,15 +85,14 @@ static struct lxc_arguments my_args = {
 lxc-start start COMMAND in specified container NAME\n\
 \n\
 Options :\n\
-  -n, --name=NAME      NAME for name of the container\n\
+" LXC_HELP_COMMON_OPTIONS "\
   -d, --daemon         daemonize the container\n\
   -e, --exec=PROG      Program to run in the container\n\
-  -f, --rcfile=FILE    Load configuration file FILE\n\
   -c, --console=FILE   Set the file output for the container console\n\
   -C, --close-all-fds  If any fds are inherited, close them\n\
                        If not specified, exit with failure instead\n\
 		       Note: --daemon implies --close-all-fds\n\
-  -s, --define KEY=VAL Assign VAL to configuration variable KEY\n",
+",
 	.options   = my_longopts,
 	.parser    = my_parser,
 	.checker   = NULL,
