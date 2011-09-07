@@ -105,7 +105,6 @@ int main(int argc, char *argv[])
 	int err = -1;
 	struct lxc_conf *conf;
 	char *const *args;
-	char *rcfile = NULL;
 	char *const default_args[] = {
 		"/sbin/init",
 		'\0',
@@ -133,32 +132,13 @@ int main(int argc, char *argv[])
 		return err;
 	}
 
-	/* rcfile is specified in the cli option */
-	if (my_args.rcfile)
-		rcfile = (char *)my_args.rcfile;
-	else {
-		int rc;
-
-		rc = asprintf(&rcfile, LXCPATH "/%s/config", my_args.name);
-		if (rc == -1) {
-			SYSERROR("failed to allocate memory");
-			return err;
-		}
-
-		/* container configuration does not exist */
-		if (access(rcfile, F_OK)) {
-			free(rcfile);
-			rcfile = NULL;
-		}
-	}
-
 	conf = lxc_conf_init();
 	if (!conf) {
 		ERROR("failed to initialize configuration");
 		return err;
 	}
 
-	if (rcfile && lxc_config_read(rcfile, conf)) {
+	if (lxc_config_read(my_args.rcfile, my_args.name, conf)) {
 		ERROR("failed to read configuration file");
 		return err;
 	}
@@ -166,7 +146,7 @@ int main(int argc, char *argv[])
 	if (lxc_config_define_load(&defines, conf))
 		return err;
 
-	if (!rcfile && !strcmp("/sbin/init", args[0])) {
+	if (!my_args.rcfile && !strcmp("/sbin/init", args[0])) {
 		ERROR("no configuration file for '/sbin/init' (may crash the host)");
 		return err;
 	}

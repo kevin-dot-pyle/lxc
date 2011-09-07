@@ -101,7 +101,6 @@ Options :\n\
 
 int main(int argc, char *argv[])
 {
-	char *rcfile;
 	struct lxc_conf *conf;
 
 	lxc_list_init(&defines);
@@ -116,32 +115,13 @@ int main(int argc, char *argv[])
 			 my_args.progname, my_args.quiet))
 		return -1;
 
-	/* rcfile is specified in the cli option */
-	if (my_args.rcfile)
-		rcfile = (char *)my_args.rcfile;
-	else {
-		int rc;
-
-		rc = asprintf(&rcfile, LXCPATH "/%s/config", my_args.name);
-		if (rc == -1) {
-			SYSERROR("failed to allocate memory");
-			return -1;
-		}
-
-		/* container configuration does not exist */
-		if (access(rcfile, F_OK)) {
-			free(rcfile);
-			rcfile = NULL;
-		}
-	}
-
 	conf = lxc_conf_init();
 	if (!conf) {
 		ERROR("failed to initialize configuration");
 		return -1;
 	}
 
-	if (rcfile && lxc_config_read(rcfile, conf)) {
+	if (lxc_config_read(my_args.rcfile, my_args.name, conf)) {
 		ERROR("failed to read configuration file");
 		return -1;
 	}

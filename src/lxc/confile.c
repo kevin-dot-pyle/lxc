@@ -20,6 +20,7 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -39,6 +40,8 @@
 #include "parse.h"
 #include "confile.h"
 #include "utils.h"
+#include "config.h"
+#include "confile.h"
 
 #include <lxc/log.h>
 #include <lxc/conf.h>
@@ -941,9 +944,25 @@ int lxc_config_readline(char *buffer, struct lxc_conf *conf)
 	return parse_line(buffer, conf);
 }
 
-int lxc_config_read(const char *file, struct lxc_conf *conf)
+int lxc_config_read(const char *file, const char *name, struct lxc_conf *conf)
 {
-	return lxc_file_for_each_line(file, parse_line, conf);
+	int rc;
+	char *rcfile;
+	if (file) {
+		return lxc_file_for_each_line(file, parse_line, conf);
+	}
+	rc = asprintf(&rcfile, LXCPATH "/%s/config", name);
+	if (rc == -1) {
+		SYSERROR("failed to allocate memory");
+		return -1;
+	}
+	if (!access(rcfile, F_OK))
+		rc = lxc_file_for_each_line(rcfile, parse_line, conf);
+	else
+	/* container configuration does not exist */
+		rc = 0;
+	free(rcfile);
+	return rc;
 }
 
 int lxc_config_define_add(struct lxc_list *defines, char* arg)
