@@ -1885,6 +1885,7 @@ struct lxc_conf *lxc_conf_init(void)
 	new->console.slave = -1;
 	new->console.name[0] = '\0';
 	new->rootfs.mount = LXCROOTFSMOUNT;
+	lxc_list_init(&new->fstab_list);
 	lxc_list_init(&new->cgroup);
 	lxc_list_init(&new->network);
 	lxc_list_init(&new->mount_list);
@@ -2294,6 +2295,7 @@ void lxc_delete_tty(struct lxc_tty_info *tty_info)
 
 int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
 {
+	const struct lxc_list *li;
 	if (setup_utsname(lxc_conf->utsname)) {
 		ERROR("failed to setup the utsname for '%s'", name);
 		return -1;
@@ -2311,9 +2313,12 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
 
 	struct mount_file_entries_state_t mfe_state;
 	memset(&mfe_state, 0, sizeof(mfe_state));
-	if (setup_mount(&lxc_conf->rootfs, &lxc_conf->console, lxc_conf->fstab, &mfe_state)) {
-		ERROR("failed to setup the mounts for '%s'", name);
-		return -1;
+	lxc_list_for_each(li, (&lxc_conf->fstab_list)) {
+		const char *fstab = li->elem;
+		if (setup_mount(&lxc_conf->rootfs, &lxc_conf->console, fstab, &mfe_state)) {
+			ERROR("failed to setup the mounts for '%s'", name);
+			return -1;
+		}
 	}
 
 	if (setup_mount_entries(&lxc_conf->rootfs, &lxc_conf->console, &lxc_conf->mount_list, &mfe_state)) {

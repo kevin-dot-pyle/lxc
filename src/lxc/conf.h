@@ -202,14 +202,14 @@ struct lxc_rootfs {
  * @mount_list : list of mount point (alternative to fstab file)
  * @network    : network configuration
  * @utsname    : container utsname
- * @fstab      : path to a fstab file format
+ * @fstab_list : paths to fstab files
  * @caps       : list of the capabilities
  * @tty_info   : tty data
  * @console    : console data
  * @ttydir     : directory (under /dev) in which to create console and ttys
  */
 struct lxc_conf {
-	char *fstab;
+	struct lxc_list fstab_list;
 	int tty;
 	int pts;
 	int reboot;

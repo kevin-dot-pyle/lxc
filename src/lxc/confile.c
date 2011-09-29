@@ -756,16 +756,18 @@ static int config_keepns(const char *key, char *value, struct lxc_conf *lxc_conf
 
 static int config_fstab(const char *key, char *value, struct lxc_conf *lxc_conf)
 {
+	char *dv;
 	if (strlen(value) >= MAXPATHLEN) {
 		ERROR("%s path is too long", value);
 		return -1;
 	}
 
-	lxc_conf->fstab = strdup(value);
-	if (!lxc_conf->fstab) {
+	dv = strdup(value);
+	if (!dv) {
 		SYSERROR("failed to duplicate string %s", value);
 		return -1;
 	}
+	lxc_config_define_add(&lxc_conf->fstab_list, dv);
 
 	return 0;
 }
