@@ -404,18 +404,12 @@ static int config_network_mtu(const char *key, char *value,
 	return 0;
 }
 
-static int config_network_ipv4(const char *key, char *value,
-			       struct lxc_conf *lxc_conf)
+static int config_parse_allocate_ipv4(char *value, struct lxc_list **plist)
 {
-	struct lxc_netdev *netdev;
 	struct lxc_inetdev *inetdev;
 	struct lxc_list *list;
 	char *cursor, *slash, *addr = NULL, *bcast = NULL, *prefix = NULL;
-
-	netdev = network_netdev(key, value, &lxc_conf->network);
-	if (!netdev)
-		return -1;
-
+	*plist = NULL;
 	inetdev = malloc(sizeof(*inetdev));
 	if (!inetdev) {
 		SYSERROR("failed to allocate ipv4 address");
@@ -428,6 +422,7 @@ static int config_network_ipv4(const char *key, char *value,
 		SYSERROR("failed to allocate memory");
 		return -1;
 	}
+	*plist = list;
 
 	lxc_list_init(list);
 	list->elem = inetdev;
@@ -473,7 +468,21 @@ static int config_network_ipv4(const char *key, char *value,
 		inetdev->bcast.s_addr |=
 			htonl(INADDR_BROADCAST >>  inetdev->prefix);
 	}
+	return 0;
+}
 
+static int config_network_ipv4(const char *key, char *value,
+			       struct lxc_conf *lxc_conf)
+{
+	struct lxc_netdev *netdev;
+	struct lxc_list *list;
+
+	netdev = network_netdev(key, value, &lxc_conf->network);
+	if (!netdev)
+		return -1;
+
+	if (config_parse_allocate_ipv4(value, &list))
+		return -1;
 	lxc_list_add(&netdev->guest_attr.ipv4, list);
 
 	return 0;
