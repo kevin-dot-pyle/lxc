@@ -145,6 +145,12 @@ static const char *get_netdev_typename(const enum lxc_network_type_t type)
 	}
 }
 
+static void lxc_init_interface_attr(struct lxc_interface_attr *attr)
+{
+	lxc_list_init(&attr->ipv4);
+	lxc_list_init(&attr->ipv6);
+}
+
 static int config_network_type(const char *key, char *value,
 			       struct lxc_conf *lxc_conf)
 {
@@ -159,8 +165,7 @@ static int config_network_type(const char *key, char *value,
 	}
 
 	memset(netdev, 0, sizeof(*netdev));
-	lxc_list_init(&netdev->ipv4);
-	lxc_list_init(&netdev->ipv6);
+	lxc_init_interface_attr(&netdev->guest_attr);
 
 	list = malloc(sizeof(*list));
 	if (!list) {
@@ -321,7 +326,7 @@ static int config_network_name(const char *key, char *value,
 	if (!netdev)
 		return -1;
 
-	return network_ifname(&netdev->name, value);
+	return network_ifname(&netdev->guest_attr.name, value);
 }
 
 static int config_network_veth_pair(const char *key, char *value,
@@ -357,8 +362,8 @@ static int config_network_hwaddr(const char *key, char *value,
 	if (!netdev)
 		return -1;
 
-	netdev->hwaddr = strdup(value);
-	if (!netdev->hwaddr) {
+	netdev->guest_attr.hwaddr = strdup(value);
+	if (!netdev->guest_attr.hwaddr) {
 		SYSERROR("failed to dup string '%s'", value);
 		return -1;
 	}
@@ -469,7 +474,7 @@ static int config_network_ipv4(const char *key, char *value,
 			htonl(INADDR_BROADCAST >>  inetdev->prefix);
 	}
 
-	lxc_list_add(&netdev->ipv4, list);
+	lxc_list_add(&netdev->guest_attr.ipv4, list);
 
 	return 0;
 }
@@ -553,7 +558,7 @@ static int config_network_ipv6(const char *key, char *value,
 		return -1;
 	}
 
-	lxc_list_add(&netdev->ipv6, list);
+	lxc_list_add(&netdev->guest_attr.ipv6, list);
 
 	return 0;
 }

@@ -74,6 +74,13 @@ struct lxc_route6 {
 	struct in6_addr addr;
 };
 
+struct lxc_interface_attr {
+	char *name;
+	char *hwaddr;
+	struct lxc_list ipv4;
+	struct lxc_list ipv6;
+};
+
 struct ifla_veth {
 	char *pair; /* pair name */
 };
@@ -109,12 +116,9 @@ struct lxc_netdev {
 	int flags;
 	int ifindex;
 	char *link;
-	char *name;
-	char *hwaddr;
 	char *mtu;
+	struct lxc_interface_attr guest_attr;
 	union netdev_p priv;
-	struct lxc_list ipv4;
-	struct lxc_list ipv6;
 	struct in_addr *ipv4_gateway;
 	bool ipv4_gateway_auto;
 	struct in6_addr *ipv6_gateway;

@@ -1383,14 +1383,14 @@ static int setup_netdev(struct lxc_netdev *netdev)
 	}
 
 	/* default: let the system to choose one interface name */
-	if (!netdev->name)
-		netdev->name = netdev->type == LXC_NET_PHYS ?
+	if (!netdev->guest_attr.name)
+		netdev->guest_attr.name = netdev->type == LXC_NET_PHYS ?
 			netdev->link : "eth%d";
 
 	/* rename the interface name */
-	err = lxc_netdev_rename_by_name(ifname, netdev->name);
+	err = lxc_netdev_rename_by_name(ifname, netdev->guest_attr.name);
 	if (err) {
-		ERROR("failed to rename %s->%s : %s", ifname, netdev->name,
+		ERROR("failed to rename %s->%s : %s", ifname, netdev->guest_attr.name,
 		      strerror(-err));
 		return -1;
 	}
@@ -1405,8 +1405,8 @@ static int setup_netdev(struct lxc_netdev *netdev)
 	}
 
 	/* set a mac address */
-	if (netdev->hwaddr) {
-		if (setup_hw_addr(netdev->hwaddr, current_ifname)) {
+	if (netdev->guest_attr.hwaddr) {
+		if (setup_hw_addr(netdev->guest_attr.hwaddr, current_ifname)) {
 			ERROR("failed to setup hw address for '%s'",
 			      current_ifname);
 			return -1;
@@ -1414,14 +1414,14 @@ static int setup_netdev(struct lxc_netdev *netdev)
 	}
 
 	/* setup ipv4 addresses on the interface */
-	if (setup_ipv4_addr(&netdev->ipv4, netdev->ifindex)) {
+	if (setup_ipv4_addr(&netdev->guest_attr.ipv4, netdev->ifindex)) {
 		ERROR("failed to setup ip addresses for '%s'",
 			      ifname);
 		return -1;
 	}
 
 	/* setup ipv6 addresses on the interface */
-	if (setup_ipv6_addr(&netdev->ipv6, netdev->ifindex)) {
+	if (setup_ipv6_addr(&netdev->guest_attr.ipv6, netdev->ifindex)) {
 		ERROR("failed to setup ipv6 addresses for '%s'",
 			      ifname);
 		return -1;
@@ -1459,7 +1459,7 @@ static int setup_netdev(struct lxc_netdev *netdev)
 			return -1;
 		}
 
-		if (lxc_list_empty(&netdev->ipv4)) {
+		if (lxc_list_empty(&netdev->guest_attr.ipv4)) {
 			ERROR("Cannot add ipv4 gateway for %s when not assigning an address", ifname);
 			return -1;
 		}
@@ -1484,7 +1484,7 @@ static int setup_netdev(struct lxc_netdev *netdev)
 			return -1;
 		}
 
-		if (lxc_list_empty(&netdev->ipv6) && !IN6_IS_ADDR_LINKLOCAL(netdev->ipv6_gateway)) {
+		if (lxc_list_empty(&netdev->guest_attr.ipv6) && !IN6_IS_ADDR_LINKLOCAL(netdev->ipv6_gateway)) {
 			ERROR("Cannot add ipv6 gateway for %s when not assigning an address", ifname);
 			return -1;
 		}
@@ -1839,7 +1839,7 @@ void lxc_delete_network(struct lxc_list *network)
 		 * interface to the network namespace, we have to destroy it
 		 */
 		if (lxc_netdev_delete_by_index(netdev->ifindex))
-			WARN("failed to remove interface '%s'", netdev->name);
+			WARN("failed to remove interface '%s'", netdev->guest_attr.name);
 	}
 }
 
@@ -1864,7 +1864,7 @@ int lxc_assign_network(struct lxc_list *network, pid_t pid)
 			return -1;
 		}
 
-		DEBUG("move '%s' to '%d'", netdev->name, pid);
+		DEBUG("move '%s'[%s] to '%d'", netdev->guest_attr.name, netdev->guest_attr.hwaddr, pid);
 	}
 
 	return 0;
