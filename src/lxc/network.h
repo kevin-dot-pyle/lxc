@@ -76,12 +76,12 @@ extern int lxc_ip_forward_off(const char *name, int family);
 /*
  * Set ip address
  */
-extern int lxc_ipv6_addr_add(int ifindex, struct in6_addr *addr,
-			     struct in6_addr *mcast,
-			     struct in6_addr *acast, int prefix);
+extern int lxc_ipv6_addr_add(int ifindex, const struct in6_addr *addr,
+			     const struct in6_addr *mcast,
+			     const struct in6_addr *acast, int prefix);
 
-extern int lxc_ipv4_addr_add(int ifindex, struct in_addr *addr,
-			     struct in_addr *bcast, int prefix);
+extern int lxc_ipv4_addr_add(int ifindex, const struct in_addr *addr,
+			     const struct in_addr *bcast, int prefix);
 
 /*
  * Get ip address

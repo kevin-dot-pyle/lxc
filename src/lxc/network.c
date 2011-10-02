@@ -674,7 +674,7 @@ int lxc_convert_mac(char *macaddr, struct sockaddr *sockaddr)
 }
 
 static int ip_addr_add(int family, int ifindex,
-		       void *addr, void *bcast, void *acast, int prefix)
+		       const void *addr, const void *bcast, const void *acast, int prefix)
 {
 	struct nl_handler nlh;
 	struct nlmsg *nlmsg = NULL, *answer = NULL;
@@ -734,15 +734,15 @@ out:
 	return err;
 }
 
-int lxc_ipv6_addr_add(int ifindex, struct in6_addr *addr,
-		      struct in6_addr *mcast,
-		      struct in6_addr *acast, int prefix)
+int lxc_ipv6_addr_add(int ifindex, const struct in6_addr *addr,
+		      const struct in6_addr *mcast,
+		      const struct in6_addr *acast, int prefix)
 {
 	return ip_addr_add(AF_INET6, ifindex, addr, mcast, acast, prefix);
 }
 
-int lxc_ipv4_addr_add(int ifindex, struct in_addr *addr,
-		      struct in_addr *bcast, int prefix)
+int lxc_ipv4_addr_add(int ifindex, const struct in_addr *addr,
+		      const struct in_addr *bcast, int prefix)
 {
 	return ip_addr_add(AF_INET, ifindex, addr, bcast, NULL, prefix);
 }
