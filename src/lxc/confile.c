@@ -525,19 +525,13 @@ static int config_network_ipv4_gateway(const char *key, char *value,
 	return 0;
 }
 
-static int config_network_ipv6(const char *key, char *value,
-			       struct lxc_conf *lxc_conf)
+static int config_parse_allocate_ipv6(char *value, struct lxc_list **plist)
 {
-	struct lxc_netdev *netdev;
 	struct lxc_inet6dev *inet6dev;
 	struct lxc_list *list;
 	char *slash;
 	char *netmask;
-
-	netdev = network_netdev(key, value, &lxc_conf->network);
-	if (!netdev)
-		return -1;
-
+	*plist = NULL;
 	inet6dev = malloc(sizeof(*inet6dev));
 	if (!inet6dev) {
 		SYSERROR("failed to allocate ipv6 address");
@@ -566,7 +560,21 @@ static int config_network_ipv6(const char *key, char *value,
 		SYSERROR("invalid ipv6 address: %s", value);
 		return -1;
 	}
+	return 0;
+}
 
+static int config_network_ipv6(const char *key, char *value,
+			       struct lxc_conf *lxc_conf)
+{
+	struct lxc_netdev *netdev;
+	struct lxc_list *list;
+
+	netdev = network_netdev(key, value, &lxc_conf->network);
+	if (!netdev)
+		return -1;
+
+	if (config_parse_allocate_ipv6(value, &list))
+		return -1;
 	lxc_list_add(&netdev->guest_attr.ipv6, list);
 
 	return 0;
