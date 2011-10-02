@@ -75,11 +75,11 @@ static int config_console(const char *, char *, struct lxc_conf *);
 typedef int (*config_cb)(const char *, char *, struct lxc_conf *);
 
 struct config {
-	char *name;
+	const char *name;
 	config_cb cb;
 };
 
-static struct config config[] = {
+static const struct config config[] = {
 
 	{ "lxc.arch",                 config_personality          },
 	{ "lxc.pts",                  config_pts                  },
@@ -111,7 +111,7 @@ static struct config config[] = {
 
 static const size_t config_size = sizeof(config)/sizeof(struct config);
 
-static struct config *getconfig(const char *key)
+static const struct config *getconfig(const char *key)
 {
 	int i;
 
@@ -878,7 +878,7 @@ static int config_utsname(const char *key, char *value, struct lxc_conf *lxc_con
 
 static int parse_line(char *buffer, void *data)
 {
-	struct config *config;
+	const struct config *config;
 	char *line, *linep;
 	char *dot;
 	char *key;
