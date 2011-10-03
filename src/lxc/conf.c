@@ -1311,10 +1311,10 @@ static int setup_hw_addr(char *hwaddr, const char *ifname)
 	return ret;
 }
 
-static int setup_ipv4_addr(struct lxc_list *ip, int ifindex)
+static int setup_ipv4_addr(const struct lxc_list *ip, int ifindex)
 {
-	struct lxc_list *iterator;
-	struct lxc_inetdev *inetdev;
+	const struct lxc_list *iterator;
+	const struct lxc_inetdev *inetdev;
 	int err;
 
 	lxc_list_for_each(iterator, ip) {
@@ -1333,10 +1333,10 @@ static int setup_ipv4_addr(struct lxc_list *ip, int ifindex)
 	return 0;
 }
 
-static int setup_ipv6_addr(struct lxc_list *ip, int ifindex)
+static int setup_ipv6_addr(const struct lxc_list *ip, int ifindex)
 {
-	struct lxc_list *iterator;
-	struct lxc_inet6dev *inet6dev;
+	const struct lxc_list *iterator;
+	const struct lxc_inet6dev *inet6dev;
 	int err;
 
 	lxc_list_for_each(iterator, ip) {
@@ -1353,6 +1353,33 @@ static int setup_ipv6_addr(struct lxc_list *ip, int ifindex)
 		}
 	}
 
+	return 0;
+}
+
+static int setup_interface_attr(const struct lxc_interface_attr *attr, const char *current_ifname, const int ifindex)
+{
+	/* set a mac address */
+	if (attr->hwaddr) {
+		if (setup_hw_addr(attr->hwaddr, current_ifname)) {
+			ERROR("failed to setup hw address for '%s'",
+			      current_ifname);
+			return -1;
+		}
+	}
+
+	/* setup ipv4 addresses on the interface */
+	if (setup_ipv4_addr(&attr->ipv4, ifindex)) {
+		ERROR("failed to setup ip addresses for '%s'",
+			      current_ifname);
+		return -1;
+	}
+
+	/* setup ipv6 addresses on the interface */
+	if (setup_ipv6_addr(&attr->ipv6, ifindex)) {
+		ERROR("failed to setup ipv6 addresses for '%s'",
+			      current_ifname);
+		return -1;
+	}
 	return 0;
 }
 
@@ -1404,28 +1431,8 @@ static int setup_netdev(struct lxc_netdev *netdev)
 		return -1;
 	}
 
-	/* set a mac address */
-	if (netdev->guest_attr.hwaddr) {
-		if (setup_hw_addr(netdev->guest_attr.hwaddr, current_ifname)) {
-			ERROR("failed to setup hw address for '%s'",
-			      current_ifname);
-			return -1;
-		}
-	}
-
-	/* setup ipv4 addresses on the interface */
-	if (setup_ipv4_addr(&netdev->guest_attr.ipv4, netdev->ifindex)) {
-		ERROR("failed to setup ip addresses for '%s'",
-			      ifname);
+	if (setup_interface_attr(&netdev->guest_attr, current_ifname, netdev->ifindex))
 		return -1;
-	}
-
-	/* setup ipv6 addresses on the interface */
-	if (setup_ipv6_addr(&netdev->guest_attr.ipv6, netdev->ifindex)) {
-		ERROR("failed to setup ipv6 addresses for '%s'",
-			      ifname);
-		return -1;
-	}
 
 	/* set the network device up */
 	if (netdev->flags & IFF_UP) {
