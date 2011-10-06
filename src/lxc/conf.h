@@ -82,7 +82,7 @@ struct lxc_interface_attr {
 };
 
 struct ifla_veth {
-	char *pair; /* pair name */
+	struct lxc_interface_attr host_attr;
 };
 
 struct ifla_vlan {

@@ -83,6 +83,12 @@ static void lxc_init_interface_attr(struct lxc_interface_attr *attr)
 	lxc_list_init(&attr->ipv6);
 }
 
+static void lxc_netdev_init_veth(struct lxc_netdev *netdev)
+{
+	netdev->type = LXC_NET_VETH;
+	lxc_init_interface_attr(&netdev->priv.veth_attr.host_attr);
+}
+
 static int config_network_type(const char *key, char *value,
 			       struct lxc_conf *lxc_conf)
 {
@@ -111,7 +117,7 @@ static int config_network_type(const char *key, char *value,
 	lxc_list_add_tail(network, list);
 
 	if (!strcmp(value, "veth"))
-		netdev->type = LXC_NET_VETH;
+		lxc_netdev_init_veth(netdev);
 	else if (!strcmp(value, "macvlan"))
 		netdev->type = LXC_NET_MACVLAN;
 	else if (!strcmp(value, "vlan"))
@@ -270,7 +276,25 @@ static int config_network_veth_pair(const char *key, char *value,
 	if (!netdev)
 		return -1;
 
-	return network_ifname(&netdev->priv.veth_attr.pair, value);
+	return network_ifname(&netdev->priv.veth_attr.host_attr.name, value);
+}
+
+static int config_network_veth_hwaddr(const char *key, char *value,
+				 struct lxc_conf *lxc_conf)
+{
+	struct lxc_netdev *netdev;
+
+	netdev = network_netdev_by_type(key, value, &lxc_conf->network, LXC_NET_VETH);
+	if (!netdev)
+		return -1;
+
+	netdev->priv.veth_attr.host_attr.hwaddr = strdup(value);
+	if (!netdev->priv.veth_attr.host_attr.hwaddr) {
+		SYSERROR("failed to dup string '%s'", value);
+		return -1;
+	}
+
+	return 0;
 }
 
 static int config_network_macvlan_mode(const char *key, char *value,
@@ -457,6 +481,20 @@ static int config_network_ipv4_gateway(const char *key, char *value,
 	return 0;
 }
 
+static int config_network_veth_ipv4(const char *key, char *value,
+			       struct lxc_conf *lxc_conf)
+{
+	struct lxc_netdev *netdev;
+	struct lxc_list *list;
+	netdev = network_netdev_by_type(key, value, &lxc_conf->network, LXC_NET_VETH);
+	if (!netdev)
+		return -1;
+	if (config_parse_allocate_ipv4(value, &list))
+		return -1;
+	lxc_list_add(&netdev->priv.veth_attr.host_attr.ipv4, list);
+	return 0;
+}
+
 static int config_parse_allocate_ipv6(char *value, struct lxc_list **plist)
 {
 	struct lxc_inet6dev *inet6dev;
@@ -546,6 +584,20 @@ static int config_network_ipv6_gateway(const char *key, char *value,
 		netdev->ipv6_gateway_auto = false;
 	}
 
+	return 0;
+}
+
+static int config_network_veth_ipv6(const char *key, char *value,
+			       struct lxc_conf *lxc_conf)
+{
+	struct lxc_netdev *netdev;
+	struct lxc_list *list;
+	netdev = network_netdev_by_type(key, value, &lxc_conf->network, LXC_NET_VETH);
+	if (!netdev)
+		return -1;
+	if (config_parse_allocate_ipv6(value, &list))
+		return -1;
+	lxc_list_add(&netdev->priv.veth_attr.host_attr.ipv6, list);
 	return 0;
 }
 
@@ -1022,6 +1074,9 @@ static const struct config config[] = {
 	{ "lxc.network.name",         config_network_name         },
 	{ "lxc.network.macvlan.mode", config_network_macvlan_mode },
 	{ "lxc.network.veth.pair",    config_network_veth_pair    },
+	{ "lxc.network.veth.hwaddr",  config_network_veth_hwaddr  },
+	{ "lxc.network.veth.ipv4",    config_network_veth_ipv4    },
+	{ "lxc.network.veth.ipv6",    config_network_veth_ipv6    },
 	{ "lxc.network.script.up",    config_network_script       },
 	{ "lxc.network.hwaddr",       config_network_hwaddr       },
 	{ "lxc.network.mtu",          config_network_mtu          },

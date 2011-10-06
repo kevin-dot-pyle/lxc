@@ -1601,9 +1601,10 @@ static int instanciate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 	char veth1buf[IFNAMSIZ], *veth1;
 	char veth2buf[IFNAMSIZ], *veth2;
 	int err;
+	int veth1ifindex;
 
-	if (netdev->priv.veth_attr.pair)
-		veth1 = netdev->priv.veth_attr.pair;
+	if (netdev->priv.veth_attr.host_attr.name)
+		veth1 = netdev->priv.veth_attr.host_attr.name;
 	else {
 		snprintf(veth1buf, sizeof(veth1buf), "vethXXXXXX");
 		veth1 = mktemp(veth1buf);
@@ -1644,6 +1645,15 @@ static int instanciate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 			goto out_delete;
 		}
 	}
+
+	veth1ifindex = if_nametoindex(veth1);
+	if (!veth1ifindex)
+	{
+		ERROR("failed to retrieve the index for %s", veth1);
+		goto out_delete;
+	}
+	if (setup_interface_attr(&netdev->priv.veth_attr.host_attr, veth1, veth1ifindex))
+		goto out_delete;
 
 	if (netdev->link) {
 		err = lxc_bridge_attach(netdev->link, veth1);
