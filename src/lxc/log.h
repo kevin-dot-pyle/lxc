@@ -69,7 +69,7 @@ struct lxc_log_event {
 	const char*		category;
 	int			priority;
 	struct timeval		timestamp;
-	struct lxc_log_locinfo	*locinfo;
+	const struct lxc_log_locinfo	*locinfo;
 	const char		*fmt;
 	va_list			*vap;
 };
@@ -176,10 +176,10 @@ __lxc_log(const struct lxc_log_category* category,
  */
 #define lxc_log_priority_define(acategory, PRIORITY)			\
 									\
-static inline void LXC_##PRIORITY(struct lxc_log_locinfo *,		\
+static inline void LXC_##PRIORITY(const struct lxc_log_locinfo *,		\
 	const char *, ...) __attribute__ ((format (printf, 2, 3)));	\
 									\
-static inline void LXC_##PRIORITY(struct lxc_log_locinfo* locinfo,	\
+static inline void LXC_##PRIORITY(const struct lxc_log_locinfo* locinfo,	\
 				  const char* format, ...)		\
 {									\
 	if (lxc_log_priority_is_enabled(acategory, 			\
@@ -235,47 +235,47 @@ static inline void LXC_##PRIORITY(struct lxc_log_locinfo* locinfo,	\
 extern struct lxc_log_category lxc_log_category_lxc;
 
 #define TRACE(format, ...) do {						\
-	struct lxc_log_locinfo locinfo = LXC_LOG_LOCINFO_INIT;		\
+	static const struct lxc_log_locinfo locinfo = LXC_LOG_LOCINFO_INIT;		\
 	LXC_TRACE(&locinfo, format, ##__VA_ARGS__);			\
 } while (0)
 
 #define DEBUG(format, ...) do {						\
-	struct lxc_log_locinfo locinfo = LXC_LOG_LOCINFO_INIT;		\
+	static const struct lxc_log_locinfo locinfo = LXC_LOG_LOCINFO_INIT;		\
 	LXC_DEBUG(&locinfo, format, ##__VA_ARGS__);			\
 } while (0)
 
 #define INFO(format, ...) do {						\
-	struct lxc_log_locinfo locinfo = LXC_LOG_LOCINFO_INIT;		\
+	static const struct lxc_log_locinfo locinfo = LXC_LOG_LOCINFO_INIT;		\
 	LXC_INFO(&locinfo, format, ##__VA_ARGS__);			\
 } while (0)
 
 #define NOTICE(format, ...) do {					\
-	struct lxc_log_locinfo locinfo = LXC_LOG_LOCINFO_INIT;		\
+	static const struct lxc_log_locinfo locinfo = LXC_LOG_LOCINFO_INIT;		\
 	LXC_NOTICE(&locinfo, format, ##__VA_ARGS__);			\
 } while (0)
 
 #define WARN(format, ...) do {						\
-	struct lxc_log_locinfo locinfo = LXC_LOG_LOCINFO_INIT;		\
+	static const struct lxc_log_locinfo locinfo = LXC_LOG_LOCINFO_INIT;		\
 	LXC_WARN(&locinfo, format, ##__VA_ARGS__);			\
 } while (0)
 
 #define ERROR(format, ...) do {						\
-	struct lxc_log_locinfo locinfo = LXC_LOG_LOCINFO_INIT;		\
+	static const struct lxc_log_locinfo locinfo = LXC_LOG_LOCINFO_INIT;		\
 	LXC_ERROR(&locinfo, format, ##__VA_ARGS__);			\
 } while (0)
 
 #define CRIT(format, ...) do {						\
-	struct lxc_log_locinfo locinfo = LXC_LOG_LOCINFO_INIT;		\
+	static const struct lxc_log_locinfo locinfo = LXC_LOG_LOCINFO_INIT;		\
 	LXC_CRIT(&locinfo, format, ##__VA_ARGS__);			\
 } while (0)
 
 #define ALERT(format, ...) do {						\
-	struct lxc_log_locinfo locinfo = LXC_LOG_LOCINFO_INIT;		\
+	static const struct lxc_log_locinfo locinfo = LXC_LOG_LOCINFO_INIT;		\
 	LXC_ALERT(&locinfo, format, ##__VA_ARGS__);			\
 } while (0)
 
 #define FATAL(format, ...) do {						\
-	struct lxc_log_locinfo locinfo = LXC_LOG_LOCINFO_INIT;		\
+	static const struct lxc_log_locinfo locinfo = LXC_LOG_LOCINFO_INIT;		\
 	LXC_FATAL(&locinfo, format, ##__VA_ARGS__);			\
 } while (0)
 
