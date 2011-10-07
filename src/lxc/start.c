@@ -496,12 +496,12 @@ static int do_start(void *data)
 		return -1;
 	}
 
-	lxc_sync_fini_parent(handler);
+	lxc_sync_fini_parent(&handler->sync_handler);
 
 	/* Tell the parent task it can begin to configure the
 	 * container and wait for it to finish
 	 */
-	if (lxc_sync_barrier_parent(handler, LXC_SYNC_CONFIGURE))
+	if (lxc_sync_barrier_parent(&handler->sync_handler, LXC_SYNC_CONFIGURE))
 		return -1;
 
 	if (handler->conf->need_utmp_watch) {
@@ -526,7 +526,7 @@ static int do_start(void *data)
 		return -1;
 
 out_warn_father:
-	lxc_sync_wake_parent(handler, LXC_SYNC_POST_CONFIGURE);
+	lxc_sync_wake_parent(&handler->sync_handler, LXC_SYNC_POST_CONFIGURE);
 	return -1;
 }
 
@@ -536,7 +536,7 @@ int lxc_spawn(struct lxc_handler *handler)
 	int failed_before_rename = 0;
 	const char *name = handler->name;
 
-	if (lxc_sync_init(handler))
+	if (lxc_sync_init(&handler->sync_handler))
 		return -1;
 
 	clone_flags = CLONE_NEWUTS|CLONE_NEWPID|CLONE_NEWIPC|CLONE_NEWNS;
@@ -550,7 +550,7 @@ int lxc_spawn(struct lxc_handler *handler)
 		 * out_delete_net does not work before lxc_clone. */
 		if (lxc_find_gateway_addresses(handler)) {
 			ERROR("failed to find gateway addresses");
-			lxc_sync_fini(handler);
+			lxc_sync_fini(&handler->sync_handler);
 			return -1;
 		}
 
@@ -559,7 +559,7 @@ int lxc_spawn(struct lxc_handler *handler)
 		 */
 		if (lxc_create_network(handler)) {
 			ERROR("failed to create the network");
-			lxc_sync_fini(handler);
+			lxc_sync_fini(&handler->sync_handler);
 			return -1;
 		}
 	}
@@ -571,9 +571,9 @@ int lxc_spawn(struct lxc_handler *handler)
 		goto out_delete_net;
 	}
 
-	lxc_sync_fini_child(handler);
+	lxc_sync_fini_child(&handler->sync_handler);
 
-	if (lxc_sync_wait_child(handler, LXC_SYNC_CONFIGURE))
+	if (lxc_sync_wait_child(&handler->sync_handler, LXC_SYNC_CONFIGURE))
 		failed_before_rename = 1;
 
 	if (lxc_cgroup_create(name, handler->pid))
@@ -593,7 +593,7 @@ int lxc_spawn(struct lxc_handler *handler)
 	/* Tell the child to continue its initialization and wait for
 	 * it to exec or return an error
 	 */
-	if (lxc_sync_barrier_child(handler, LXC_SYNC_POST_CONFIGURE))
+	if (lxc_sync_barrier_child(&handler->sync_handler, LXC_SYNC_POST_CONFIGURE))
 		return -1;
 
 	if (handler->ops->post_start(handler, handler->data))
@@ -605,7 +605,7 @@ int lxc_spawn(struct lxc_handler *handler)
 		goto out_abort;
 	}
 
-	lxc_sync_fini(handler);
+	lxc_sync_fini(&handler->sync_handler);
 	return 0;
 
 out_delete_net:
@@ -613,7 +613,7 @@ out_delete_net:
 		lxc_delete_network(&handler->conf->network);
 out_abort:
 	lxc_abort(name, handler);
-	lxc_sync_fini(handler);
+	lxc_sync_fini(&handler->sync_handler);
 	return -1;
 }
 

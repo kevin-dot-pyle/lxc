@@ -95,7 +95,7 @@ int main(int argc, char *argv[], char *envp[])
 	pid_t pid, init_pid;
 	struct passwd *passwd;
 	struct lxc_proc_context_info *init_ctx;
-	struct lxc_handler *handler;
+	struct lxc_sync_handler *handler;
 	uid_t uid;
 	char *curdir;
 

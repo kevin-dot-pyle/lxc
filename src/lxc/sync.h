@@ -23,7 +23,7 @@
 #ifndef __lxc_sync_h
 #define __lxc_sync_h
 
-struct lxc_handler;
+struct lxc_sync_handler;
 
 enum {
 	LXC_SYNC_CONFIGURE,
@@ -32,14 +32,14 @@ enum {
 	LXC_SYNC_POST_RESTART,
 };
 
-int lxc_sync_init(struct lxc_handler *handler);
-void lxc_sync_fini(struct lxc_handler *);
-void lxc_sync_fini_parent(struct lxc_handler *);
-void lxc_sync_fini_child(struct lxc_handler *);
-int lxc_sync_wake_child(struct lxc_handler *, int);
-int lxc_sync_wait_child(struct lxc_handler *, int);
-int lxc_sync_wake_parent(struct lxc_handler *, int);
-int lxc_sync_barrier_parent(struct lxc_handler *, int);
-int lxc_sync_barrier_child(struct lxc_handler *, int);
+int lxc_sync_init(struct lxc_sync_handler *handler);
+void lxc_sync_fini(struct lxc_sync_handler *);
+void lxc_sync_fini_parent(struct lxc_sync_handler *);
+void lxc_sync_fini_child(struct lxc_sync_handler *);
+int lxc_sync_wake_child(struct lxc_sync_handler *, int);
+int lxc_sync_wait_child(struct lxc_sync_handler *, int);
+int lxc_sync_wake_parent(struct lxc_sync_handler *, int);
+int lxc_sync_barrier_parent(struct lxc_sync_handler *, int);
+int lxc_sync_barrier_child(struct lxc_sync_handler *, int);
 
 #endif

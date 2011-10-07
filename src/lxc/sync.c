@@ -72,32 +72,32 @@ static int __sync_barrier(int fd, int sequence)
 	return __sync_wait(fd, sequence+1);
 }
 
-int lxc_sync_barrier_parent(struct lxc_handler *handler, int sequence)
+int lxc_sync_barrier_parent(struct lxc_sync_handler *handler, int sequence)
 {
 	return __sync_barrier(handler->sv[0], sequence);
 }
 
-int lxc_sync_barrier_child(struct lxc_handler *handler, int sequence)
+int lxc_sync_barrier_child(struct lxc_sync_handler *handler, int sequence)
 {
 	return __sync_barrier(handler->sv[1], sequence);
 }
 
-int lxc_sync_wake_parent(struct lxc_handler *handler, int sequence)
+int lxc_sync_wake_parent(struct lxc_sync_handler *handler, int sequence)
 {
 	return __sync_wake(handler->sv[0], sequence);
 }
 
-int lxc_sync_wait_child(struct lxc_handler *handler, int sequence)
+int lxc_sync_wait_child(struct lxc_sync_handler *handler, int sequence)
 {
 	return __sync_wait(handler->sv[1], sequence);
 }
 
-int lxc_sync_wake_child(struct lxc_handler *handler, int sequence)
+int lxc_sync_wake_child(struct lxc_sync_handler *handler, int sequence)
 {
 	return __sync_wake(handler->sv[1], sequence);
 }
 
-int lxc_sync_init(struct lxc_handler *handler)
+int lxc_sync_init(struct lxc_sync_handler *handler)
 {
 	if (socketpair(AF_LOCAL, SOCK_STREAM, 0, handler->sv)) {
 		SYSERROR("failed to create synchronization socketpair");
@@ -110,7 +110,7 @@ int lxc_sync_init(struct lxc_handler *handler)
 	return 0;
 }
 
-void lxc_sync_fini_child(struct lxc_handler *handler)
+void lxc_sync_fini_child(struct lxc_sync_handler *handler)
 {
 	if (handler->sv[0] != -1) {
 		close(handler->sv[0]);
@@ -118,7 +118,7 @@ void lxc_sync_fini_child(struct lxc_handler *handler)
 	}
 }
 
-void lxc_sync_fini_parent(struct lxc_handler *handler)
+void lxc_sync_fini_parent(struct lxc_sync_handler *handler)
 {
 	if (handler->sv[1] != -1) {
 		close(handler->sv[1]);
@@ -126,7 +126,7 @@ void lxc_sync_fini_parent(struct lxc_handler *handler)
 	}
 }
 
-void lxc_sync_fini(struct lxc_handler *handler)
+void lxc_sync_fini(struct lxc_sync_handler *handler)
 {
 	lxc_sync_fini_child(handler);
 	lxc_sync_fini_parent(handler);

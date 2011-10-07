@@ -30,6 +30,10 @@ struct lxc_conf;
 
 struct lxc_handler;
 
+struct lxc_sync_handler {
+	int sv[2];
+};
+
 struct lxc_operations {
 	int (*start)(struct lxc_handler *, void *);
 	int (*post_start)(struct lxc_handler *, void *);
@@ -44,7 +48,7 @@ struct lxc_handler {
 	struct lxc_conf *conf;
 	struct lxc_operations *ops;
 	void *data;
-	int sv[2];
+	struct lxc_sync_handler sync_handler;
 };
 
 extern struct lxc_handler *lxc_init(const char *name, struct lxc_conf *);
