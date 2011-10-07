@@ -615,7 +615,7 @@ static int setup_rootfs_pivot_root_cb(char *buffer, void *data)
 		SYSERROR("strdup failed");
 		return -1;
 	}
-	lxc_list_add_tail(mountlist, listentry);
+	lxc_list_add(mountlist, listentry);
 
 	return 0;
 }
