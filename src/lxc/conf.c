@@ -126,7 +126,7 @@ static int instanciate_vlan(struct lxc_handler *, struct lxc_netdev *);
 static int instanciate_phys(struct lxc_handler *, struct lxc_netdev *);
 static int instanciate_empty(struct lxc_handler *, struct lxc_netdev *);
 
-static  instanciate_cb netdev_conf[LXC_NET_MAXCONFTYPE + 1] = {
+static const instanciate_cb netdev_conf[] = {
 	[LXC_NET_VETH]    = instanciate_veth,
 	[LXC_NET_MACVLAN] = instanciate_macvlan,
 	[LXC_NET_VLAN]    = instanciate_vlan,
@@ -1796,19 +1796,18 @@ int lxc_create_network(struct lxc_handler *handler)
 {
 	struct lxc_list *network = &handler->conf->network;
 	struct lxc_list *iterator;
-	struct lxc_netdev *netdev;
 
 	lxc_list_for_each(iterator, network) {
+		struct lxc_netdev *netdev = iterator->elem;
+		const unsigned nettype = netdev->type;
 
-		netdev = iterator->elem;
-
-		if (netdev->type < 0 || netdev->type > LXC_NET_MAXCONFTYPE) {
+		if (nettype >= sizeof(netdev_conf) / sizeof(netdev_conf[0])) {
 			ERROR("invalid network configuration type '%d'",
 			      netdev->type);
 			return -1;
 		}
 
-		if (netdev_conf[netdev->type](handler, netdev)) {
+		if (netdev_conf[nettype](handler, netdev)) {
 			ERROR("failed to create netdev");
 			return -1;
 		}

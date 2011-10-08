@@ -125,6 +125,26 @@ static const struct config *getconfig(const char *key)
 	return NULL;
 }
 
+static const char *get_netdev_typename(const enum lxc_network_type_t type)
+{
+	switch(type) {
+		case LXC_NET_UNUSED:
+			return "unused";
+		case LXC_NET_EMPTY:
+			return "empty";
+		case LXC_NET_VETH:
+			return "veth";
+		case LXC_NET_MACVLAN:
+			return "macvlan";
+		case LXC_NET_PHYS:
+			return "phys";
+		case LXC_NET_VLAN:
+			return "vlan";
+		default:
+			return "unknown";
+	}
+}
+
 static int config_network_type(const char *key, char *value,
 			       struct lxc_conf *lxc_conf)
 {
@@ -200,6 +220,17 @@ static struct lxc_netdev *network_netdev(const char *key, const char *value,
 		return NULL;
 	}
 
+	return netdev;
+}
+
+static struct lxc_netdev *network_netdev_by_type(const char *key, const char *value,
+					 struct lxc_list *network, const enum lxc_network_type_t expected_type)
+{
+	struct lxc_netdev *const netdev = network_netdev(key, value, network);
+	if (netdev->type != expected_type) {
+		ERROR("network device type %s, but expected %s for option '%s'='%s'", get_netdev_typename(netdev->type), get_netdev_typename(expected_type), key, value);
+		return NULL;
+	}
 	return netdev;
 }
 
@@ -286,7 +317,7 @@ static int config_network_name(const char *key, char *value,
 {
 	struct lxc_netdev *netdev;
 
-	netdev = network_netdev(key, value, &lxc_conf->network);
+	netdev = network_netdev_by_type(key, value, &lxc_conf->network, LXC_NET_VETH);
 	if (!netdev)
 		return -1;
 
@@ -298,7 +329,7 @@ static int config_network_veth_pair(const char *key, char *value,
 {
 	struct lxc_netdev *netdev;
 
-	netdev = network_netdev(key, value, &lxc_conf->network);
+	netdev = network_netdev_by_type(key, value, &lxc_conf->network, LXC_NET_MACVLAN);
 	if (!netdev)
 		return -1;
 
@@ -340,7 +371,7 @@ static int config_network_vlan_id(const char *key, char *value,
 {
 	struct lxc_netdev *netdev;
 
-	netdev = network_netdev(key, value, &lxc_conf->network);
+	netdev = network_netdev_by_type(key, value, &lxc_conf->network, LXC_NET_VLAN);
 	if (!netdev)
 		return -1;
 

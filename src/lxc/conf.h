@@ -31,13 +31,13 @@
 
 #include <lxc/start.h> /* for lxc_handler */
 
-enum {
+enum lxc_network_type_t {
+	LXC_NET_UNUSED,
 	LXC_NET_EMPTY,
 	LXC_NET_VETH,
 	LXC_NET_MACVLAN,
 	LXC_NET_PHYS,
 	LXC_NET_VLAN,
-	LXC_NET_MAXCONFTYPE,
 };
 
 /*
@@ -105,7 +105,7 @@ union netdev_p {
  * @upscript   : a script filename to be executed during interface configuration
  */
 struct lxc_netdev {
-	int type;
+	enum lxc_network_type_t type;
 	int flags;
 	int ifindex;
 	char *link;
