@@ -210,6 +210,7 @@ struct lxc_conf {
 	int reboot;
 	int need_utmp_watch;
 	int personality;
+	unsigned keep_ns;
 	struct utsname *utsname;
 	struct lxc_list cgroup;
 	struct lxc_list network;

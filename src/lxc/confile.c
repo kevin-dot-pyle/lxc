@@ -42,6 +42,7 @@
 #include "utils.h"
 #include "config.h"
 #include "confile.h"
+#include "namespace.h"
 
 #include <lxc/log.h>
 #include <lxc/conf.h>
@@ -731,6 +732,28 @@ out:
 	return -1;
 }
 
+static int config_keepns(const char *key, char *value, struct lxc_conf *lxc_conf)
+{
+	/*
+	 * Omit support for pid and net.  Keeping the pid namespace shared
+	 * is contrary to the point of LXC.  Keeping the network namespace
+	 * shared when the guest is configured with network devices could
+	 * cause strange behavior.
+	 */
+	if (!strcmp(value, "mount"))
+		lxc_conf->keep_ns |= CLONE_NEWNS;
+	else if (!strcmp(value, "ipc"))
+		lxc_conf->keep_ns |= CLONE_NEWIPC;
+	else if (!strcmp(value, "uts"))
+		lxc_conf->keep_ns |= CLONE_NEWUTS;
+	else
+	{
+		ERROR("unrecognized keep: %s", value);
+		return -1;
+	}
+	return 0;
+}
+
 static int config_fstab(const char *key, char *value, struct lxc_conf *lxc_conf)
 {
 	if (strlen(value) >= MAXPATHLEN) {
@@ -1063,6 +1086,7 @@ static const struct config config[] = {
 	{ "lxc.tty",                  config_tty                  },
 	{ "lxc.devttydir",            config_ttydir               },
 	{ "lxc.cgroup",               config_cgroup               },
+	{ "lxc.keepns",				  config_keepns				  },
 	{ "lxc.mount",                config_mount                },
 	{ "lxc.rootfs.mount",         config_rootfs_mount         },
 	{ "lxc.rootfs",               config_rootfs               },

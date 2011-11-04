@@ -540,6 +540,7 @@ int lxc_spawn(struct lxc_handler *handler)
 		return -1;
 
 	clone_flags = CLONE_NEWUTS|CLONE_NEWPID|CLONE_NEWIPC|CLONE_NEWNS;
+	clone_flags &= ~handler->conf->keep_ns;
 	if (!lxc_list_empty(&handler->conf->network)) {
 
 		clone_flags |= CLONE_NEWNET;
