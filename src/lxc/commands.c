@@ -271,7 +271,7 @@ extern int lxc_command_mainloop_add(const char *name,
 
 	fd = lxc_af_unix_open(path, SOCK_STREAM, 0);
 	if (fd < 0) {
-		ERROR("failed (%d) to create the command service point %s", errno, offset);
+		ERROR("failed to create the command service point \"%s\": %s", path, strerror(-fd));
 		if (errno == EADDRINUSE) {
 			ERROR("##");
 			ERROR("# The container appears to be already running!");

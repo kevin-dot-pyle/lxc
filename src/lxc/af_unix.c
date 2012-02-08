@@ -43,12 +43,12 @@ int lxc_af_unix_open(const char *path, int type, int flags)
 
 	fd = socket(PF_UNIX, type, 0);
 	if (fd < 0)
-		return -1;
-
-	memset(&addr, 0, sizeof(addr));
+		return -errno;
 
 	if (!path)
 		return fd;
+
+	memset(&addr, 0, sizeof(addr));
 
 	addr.sun_family = AF_UNIX;
 	/* copy entire buffer in case of abstract socket */
@@ -56,13 +56,15 @@ int lxc_af_unix_open(const char *path, int type, int flags)
 	       path[0]?strlen(path):sizeof(addr.sun_path));
 
 	if (bind(fd, (struct sockaddr *)&addr, sizeof(addr))) {
+		const int e = errno;
 		close(fd);
-		return -1;
+		return -e;
 	}
 	
 	if (type == SOCK_STREAM && listen(fd, 100)) {
+		const int e = errno;
 		close(fd);
-		return -1;
+		return -e;
 	}
 
 	return fd;
