@@ -34,11 +34,13 @@
 #include <pty.h>
 
 #include <linux/loop.h>
+#include <linux/magic.h>
 
 #include <sys/types.h>
 #include <sys/utsname.h>
 #include <sys/param.h>
 #include <sys/stat.h>
+#include <sys/statfs.h>
 #include <sys/socket.h>
 #include <sys/mount.h>
 #include <sys/mman.h>
@@ -1039,12 +1041,180 @@ static int parse_mntopts(const char *mntopts, unsigned long *mntflags,
 	return 0;
 }
 
+struct recursive_mkdir_state_t
+{
+	const char *dir_basename;
+	struct statfs fsst;
+	struct stat fdst;
+};
+
+static int check_acceptable_fs_type(const int fd, const char *const fsname, const char *const p, struct recursive_mkdir_state_t *const rms)
+{
+	memset(&rms->fsst, 0, sizeof(rms->fsst));
+	const int rcstatfs = fstatfs(fd, &rms->fsst);
+	if (rcstatfs)
+	{
+		SYSERROR("failed to fstatfs '%s' for '%s'", p, fsname);
+		return -1;
+	}
+	if (rms->fsst.f_type != TMPFS_MAGIC)
+	{
+		WARN("mountpoint parent '%s' not on tmpfs, will not auto-create mountpoint for '%s'.", p, fsname);
+		return -1;
+	}
+	memset(&rms->fdst, 0, sizeof(rms->fdst));
+	const int rcstat = fstat(fd, &rms->fdst);
+	if (rcstat)
+	{
+		SYSERROR("failed to fstat '%s' for '%s'", p, fsname);
+		return -1;
+	}
+	return 0;
+}
+
+static int open_mkdir_at(const int dirfd, const char *dirname, const char *const basename, const mode_t st_mode)
+{
+	const int rcmkdir = mkdirat(dirfd, basename, st_mode);
+	if (rcmkdir)
+	{
+		SYSERROR("failed to mkdirat '%s'/'%s'", dirname, basename);
+		return rcmkdir;
+	}
+	const int fd = openat(dirfd, basename, O_RDONLY, 0);
+	if (fd < 0)
+	{
+		SYSERROR("failed to open-after-mkdir '%s'/'%s'", dirname, basename);
+	}
+	return fd;
+}
+
+static int recursive_mkdir_on_tmpfs_allocated(const char *const fsname, char *const p, struct recursive_mkdir_state_t *const rms)
+{
+	char *const s = strrchr(p, '/');
+	if (!s || s == p)
+	{
+		DEBUG("Target '%s' has no slashes, cannot check tmpfs for '%s'", p, fsname);
+		return -1;
+	}
+	*s = 0;
+	/*
+	 * p now points at $(dirname $p)
+	 */
+	int fd = openat(AT_FDCWD, p, O_RDONLY, 0);
+	if (fd >= 0)
+	{
+		const int rca = check_acceptable_fs_type(fd, fsname, p, rms);
+		if (rca)
+		{
+			close(fd);
+			return -1;
+		}
+	}
+	else if (errno != ENOENT)
+	{
+		SYSERROR("failed to open-statfs '%s' for '%s'", p, fsname);
+		return -1;
+	}
+	else
+	{
+		const int pfd = recursive_mkdir_on_tmpfs_allocated(fsname, p, rms);
+		if (pfd < 0)
+			return pfd;
+		fd = open_mkdir_at(pfd, p, rms->dir_basename, rms->fdst.st_mode);
+		close(pfd);
+		if (fd < 0)
+			return fd;
+	}
+	*s = '/';
+	rms->dir_basename = s + 1;
+	return fd;
+}
+
+static int mkmntpt_at_fd(const int fdtarget, const char *const basename, const char *const fsname, const char *target, const int want_directory_mount)
+{
+	if (want_directory_mount)
+	{
+		const int rcmk = mkdirat(fdtarget, basename, 0);
+		if (rcmk)
+		{
+			SYSERROR("failed to mkdir '%s' for source '%s'", target, fsname);
+			return rcmk;
+		}
+		DEBUG("created directory to mount '%s' at '%s'", fsname, target);
+	}
+	else
+	{
+		const int rcmk = openat(fdtarget, basename, O_CREAT | O_RDWR, 0);
+		if (rcmk < 0)
+		{
+			SYSERROR("failed to open-create '%s' for '%s'", fsname, target);
+			return rcmk;
+		}
+		close(rcmk);
+		DEBUG("created file to mount '%s' at '%s'", fsname, target);
+	}
+	return 0;
+}
+
+static int recursive_mkdir_on_tmpfs_writable(const char *const fsname, char *const p, const int want_directory_mount)
+{
+	struct recursive_mkdir_state_t rms;
+	const int pfd = recursive_mkdir_on_tmpfs_allocated(fsname, p, &rms);
+	if (pfd < 0)
+		return pfd;
+	const int rc = mkmntpt_at_fd(pfd, rms.dir_basename, fsname, p, want_directory_mount);
+	close(pfd);
+	return rc;
+}
+
+static int recursive_mkdir_on_tmpfs(const char *const fsname, const char *const target, const int want_directory_mount)
+{
+	char *const p = strdup(target);
+	if (!p)
+	{
+		SYSERROR("failed to strdup '%s'", target);
+		return -1;
+	}
+	const int rc = recursive_mkdir_on_tmpfs_writable(fsname, p, want_directory_mount);
+	free(p);
+	return rc;
+}
+
+static int mount_or_make(const char *const fsname, const char *target, const char *fstype, unsigned long mountflags, const char *data)
+{
+	if (!mount(fsname, target, fstype, mountflags, data))
+		return 0;
+	if (errno != ENOENT)
+	{
+		SYSERROR("failed to mount '%s' on '%s'", fsname, target);
+		return -1;
+	}
+	int want_dir = 1;
+	if (mountflags & MS_BIND)
+	{
+		struct stat st;
+		memset(&st, 0, sizeof(st));
+		if (stat(fsname, &st))
+		{
+			SYSERROR("failed to stat '%s' for '%s'", fsname, target);
+			return -1;
+		}
+		want_dir = S_ISDIR(st.st_mode);
+	}
+	const int rc = recursive_mkdir_on_tmpfs(fsname, target, want_dir);
+	if (rc < 0)
+		return rc;
+	if (!mount(fsname, target, fstype, mountflags, data))
+		return 0;
+	SYSERROR("failed to mount '%s' on '%s'", fsname, target);
+	return -1;
+}
+
 static int mount_entry(const char *fsname, const char *target,
 		       const char *fstype, unsigned long mountflags,
 		       const char *data)
 {
-	if (mount(fsname, target, fstype, mountflags & ~MS_REMOUNT, data)) {
-		SYSERROR("failed to mount '%s' on '%s'", fsname, target);
+	if (mount_or_make(fsname, target, fstype, mountflags & ~MS_REMOUNT, data)) {
 		return -1;
 	}
 
