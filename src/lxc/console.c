@@ -308,17 +308,19 @@ int lxc_console_mainloop_add(struct lxc_epoll_descr *descr,
 		return 0;
 	}
 
-	if (lxc_mainloop_add_handler(descr, console->master,
-				     console_handler, console)) {
-		ERROR("failed to add to mainloop console handler for '%d'",
-		      console->master);
+	const int ret_add_master = lxc_mainloop_add_handler(descr, console->master, console_handler, console);
+	if (ret_add_master) {
+		ERROR("failed to add to mainloop console handler for '%d': %s",
+		      console->master, strerror(-ret_add_master));
 		return -1;
 	}
 
-	if (console->peer != -1 &&
-	    lxc_mainloop_add_handler(descr, console->peer,
-				     console_handler, console))
-		WARN("console input disabled");
+	if (console->peer != -1)
+	{
+	    const int ret_add_peer = lxc_mainloop_add_handler(descr, console->peer, console_handler, console);
+		if (ret_add_peer != 0)
+			WARN("console input disabled: %s", strerror(-ret_add_peer));
+	}
 
 	return 0;
 }

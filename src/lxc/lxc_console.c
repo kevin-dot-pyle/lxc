@@ -225,13 +225,13 @@ int main(int argc, char *argv[])
 
 	err = lxc_mainloop_add_handler(&descr, 0, stdin_handler, &master);
 	if (err) {
-		ERROR("failed to add handler for the stdin");
+		ERROR("failed to add handler for the stdin: %s", strerror(-err));
 		goto out_mainloop_open;
 	}
 
 	err = lxc_mainloop_add_handler(&descr, master, master_handler, &std_in);
 	if (err) {
-		ERROR("failed to add handler for the master");
+		ERROR("failed to add handler for the master: %s", strerror(-err));
 		goto out_mainloop_open;
 	}
 

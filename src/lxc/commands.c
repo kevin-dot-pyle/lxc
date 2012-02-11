@@ -247,7 +247,7 @@ static int incoming_command_handler(int fd, void *data,
 
 	ret = lxc_mainloop_add_handler(descr, connection, command_handler, data);
 	if (ret) {
-		ERROR("failed to add handler");
+		ERROR("failed to add handler: %s", strerror(-ret));
 		goto out_close;
 	}
 
@@ -289,7 +289,7 @@ extern int lxc_command_mainloop_add(const char *name,
 	ret = lxc_mainloop_add_handler(descr, fd, incoming_command_handler,
 				       handler);
 	if (ret) {
-		ERROR("failed to add handler for command socket");
+		ERROR("failed to add handler for command socket: %s", strerror(-ret));
 		close(fd);
 	}
 

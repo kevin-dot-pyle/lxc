@@ -295,8 +295,9 @@ int lxc_poll(const char *name, struct lxc_handler *handler)
 		goto out_sigfd;
 	}
 
-	if (lxc_mainloop_add_handler(&descr, sigfd, signal_handler, &pid)) {
-		ERROR("failed to add handler for the signal");
+	const int ret_add_sig_handler = lxc_mainloop_add_handler(&descr, sigfd, signal_handler, &pid);
+	if (ret_add_sig_handler != 0) {
+		ERROR("failed to add handler for the signal: %s", strerror(-ret_add_sig_handler));
 		goto out_mainloop_open;
 	}
 

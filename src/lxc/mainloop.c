@@ -78,7 +78,7 @@ int lxc_mainloop_add_handler(struct lxc_epoll_descr *descr, int fd,
 
 	handler = malloc(sizeof(*handler));
 	if (!handler)
-		return -1;
+		return -ENOMEM;
 
 	handler->callback = callback;
 	handler->fd = fd;
@@ -99,8 +99,11 @@ int lxc_mainloop_add_handler(struct lxc_epoll_descr *descr, int fd,
 	return 0;
 
 out_free_handler:
-	free(handler);
-	return -1;
+	; {
+		const int e = -errno;
+		free(handler);
+		return e;
+	}
 }
 
 int lxc_mainloop_del_handler(struct lxc_epoll_descr *descr, int fd)
