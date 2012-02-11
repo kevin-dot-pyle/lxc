@@ -85,11 +85,11 @@ static uid_t lookup_user(const char *optarg)
 	return uid;
 }
 
-static char *namespaces_list[] = {
+static const char *const namespaces_list[] = {
 	"MOUNT", "PID", "UTSNAME", "IPC",
 	"USER", "NETWORK"
 };
-static int cloneflags_list[] = {
+static const int cloneflags_list[] = {
 	CLONE_NEWNS, CLONE_NEWPID, CLONE_NEWUTS, CLONE_NEWIPC,
 	CLONE_NEWUSER, CLONE_NEWNET
 };

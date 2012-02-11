@@ -619,7 +619,7 @@ out_abort:
 }
 
 int __lxc_start(const char *name, struct lxc_conf *conf,
-		struct lxc_operations* ops, void *data)
+		const struct lxc_operations* ops, void *data)
 {
 	struct lxc_handler *handler;
 	int err = -1;
@@ -711,7 +711,7 @@ static int post_start(struct lxc_handler *handler, void* data)
 	return 0;
 }
 
-static struct lxc_operations start_ops = {
+static const struct lxc_operations start_ops = {
 	.start = start,
 	.post_start = post_start
 };

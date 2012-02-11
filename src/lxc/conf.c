@@ -110,13 +110,13 @@ extern int pivot_root(const char * new_root, const char * put_old);
 typedef int (*instanciate_cb)(struct lxc_handler *, struct lxc_netdev *);
 
 struct mount_opt {
-	char *name;
+	const char *name;
 	int clear;
 	int flag;
 };
 
 struct caps_opt {
-	char *name;
+	const char *name;
 	int value;
 };
 
@@ -134,7 +134,7 @@ static const instanciate_cb netdev_conf[] = {
 	[LXC_NET_EMPTY]   = instanciate_empty,
 };
 
-static struct mount_opt mount_opt[] = {
+static const struct mount_opt mount_opt[] = {
 	{ "defaults",      0, 0              },
 	{ "ro",            0, MS_RDONLY      },
 	{ "rw",            1, MS_RDONLY      },
@@ -162,7 +162,7 @@ static struct mount_opt mount_opt[] = {
 	{ "nostrictatime", 1, MS_STRICTATIME },
 };
 
-static struct caps_opt caps_opt[] = {
+static const struct caps_opt caps_opt[] = {
 	{ "chown",             CAP_CHOWN             },
 	{ "dac_override",      CAP_DAC_OVERRIDE      },
 	{ "dac_read_search",   CAP_DAC_READ_SEARCH   },
@@ -978,9 +978,9 @@ out:
 	return ret;
 }
 
-static void parse_mntopt(char *opt, unsigned long *flags, char **data)
+static void parse_mntopt(const char *const opt, unsigned long *const flags, char **const data)
 {
-	struct mount_opt *mo;
+	const struct mount_opt *mo;
 
 	/* If opt is found in mount_opt, set or clear flags.
 	 * Otherwise append it to data. */

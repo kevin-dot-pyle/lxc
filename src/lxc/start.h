@@ -46,7 +46,7 @@ struct lxc_handler {
 	int sigfd;
 	sigset_t oldmask;
 	struct lxc_conf *conf;
-	struct lxc_operations *ops;
+	const struct lxc_operations *ops;
 	void *data;
 	struct lxc_sync_handler sync_handler;
 };
@@ -59,7 +59,7 @@ extern void lxc_abort(const char *name, struct lxc_handler *handler);
 extern void lxc_fini(const char *name, struct lxc_handler *handler);
 extern int lxc_set_state(const char *, struct lxc_handler *, lxc_state_t);
 extern int lxc_check_inherited(struct lxc_conf *conf, int fd_to_ignore);
-int __lxc_start(const char *, struct lxc_conf *, struct lxc_operations *,
+int __lxc_start(const char *, struct lxc_conf *, const struct lxc_operations *,
 		void *);
 
 #endif

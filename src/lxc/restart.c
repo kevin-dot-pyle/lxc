@@ -59,7 +59,7 @@ static int post_restart(struct lxc_handler *handler, void* data)
 	return 0;
 }
 
-static struct lxc_operations restart_ops = {
+static const struct lxc_operations restart_ops = {
 	.start = restart,
 	.post_start = post_restart
 };

@@ -46,7 +46,7 @@ int setup_rootfs_pivot_root(const char *pivotdir);
 
 static int quiet;
 
-static struct option options[] = {
+static const struct option options[] = {
 	{ "exec", required_argument, 0, 'e' },
 	{ "gid", required_argument, 0, 'g' },
 	{ "gidlist", required_argument, 0, 'G' },
