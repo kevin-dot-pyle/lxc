@@ -980,7 +980,13 @@ out:
 	return ret;
 }
 
-static void parse_mntopt(const char *const opt, unsigned long *const flags, char **const data)
+struct mount_option_state_t
+{
+	unsigned long flags;
+	char *data;
+};
+
+static void parse_mntopt(const char *const opt, struct mount_option_state_t *const mos)
 {
 	const struct mount_opt *mo;
 
@@ -990,27 +996,25 @@ static void parse_mntopt(const char *const opt, unsigned long *const flags, char
 	for (mo = mount_opt; mo != (mount_opt + (sizeof(mount_opt) / sizeof(mount_opt[0]))); ++mo) {
 		if (!strncmp(opt, mo->name, strlen(mo->name))) {
 			if (mo->clear)
-				*flags &= ~mo->flag;
+				mos->flags &= ~mo->flag;
 			else
-				*flags |= mo->flag;
+				mos->flags |= mo->flag;
 			return;
 		}
 	}
 
-	if (strlen(*data))
-		strcat(*data, ",");
-	strcat(*data, opt);
+	if (*mos->data)
+		strcat(mos->data, ",");
+	strcat(mos->data, opt);
 }
 
-static int parse_mntopts(const char *mntopts, unsigned long *mntflags,
-			 char **mntdata)
+static int parse_mntopts(const char *mntopts, struct mount_option_state_t *mo)
 {
 	char *s, *data;
 	char *p, *saveptr = NULL;
 
-	*mntdata = NULL;
-	*mntflags = 0L;
-
+	mo->flags = 0;
+	mo->data = NULL;
 	if (!mntopts)
 		return 0;
 
@@ -1027,15 +1031,17 @@ static int parse_mntopts(const char *mntopts, unsigned long *mntflags,
 		return -1;
 	}
 	*data = 0;
+	mo->data = data;
 
 	for (p = strtok_r(s, ",", &saveptr); p != NULL;
 	     p = strtok_r(NULL, ",", &saveptr))
-		parse_mntopt(p, mntflags, &data);
+		parse_mntopt(p, mo);
 
-	if (*data)
-		*mntdata = data;
-	else
+	if (!*data)
+	{
+		mo->data = NULL;
 		free(data);
+	}
 	free(s);
 
 	return 0;
@@ -1211,9 +1217,10 @@ static int mount_or_make(const char *const fsname, const char *target, const cha
 }
 
 static int mount_entry(const char *fsname, const char *target,
-		       const char *fstype, unsigned long mountflags,
-		       const char *data)
+		       const char *fstype, const struct mount_option_state_t *const mo)
 {
+	const unsigned long mountflags = mo->flags;
+	const char *const data = mo->data;
 	if (mount_or_make(fsname, target, fstype, mountflags & ~MS_REMOUNT, data)) {
 		return -1;
 	}
@@ -1236,38 +1243,21 @@ static int mount_entry(const char *fsname, const char *target,
 	return 0;
 }
 
-static inline int mount_entry_on_systemfs(struct mntent *mntent)
+static inline int mount_entry_on_systemfs(struct mntent *mntent, const struct mount_option_state_t *const mo)
 {
-	unsigned long mntflags;
-	char *mntdata;
 	int ret;
 
-	if (parse_mntopts(mntent->mnt_opts, &mntflags, &mntdata) < 0) {
-		ERROR("failed to parse mount option '%s'", mntent->mnt_opts);
-		return -1;
-	}
-
 	ret = mount_entry(mntent->mnt_fsname, mntent->mnt_dir,
-			  mntent->mnt_type, mntflags, mntdata);
-
-	free(mntdata);
-
+			  mntent->mnt_type, mo);
 	return ret;
 }
 
-static int mount_entry_on_absolute_rootfs(struct mntent *mntent,
+static int mount_entry_on_absolute_rootfs(struct mntent *mntent, const struct mount_option_state_t *const mo,
 					  const struct lxc_rootfs *rootfs)
 {
 	char *aux;
 	char path[MAXPATHLEN];
-	unsigned long mntflags;
-	char *mntdata;
 	int ret = 0;
-
-	if (parse_mntopts(mntent->mnt_opts, &mntflags, &mntdata) < 0) {
-		ERROR("failed to parse mount option '%s'", mntent->mnt_opts);
-		return -1;
-	}
 
 	aux = strstr(mntent->mnt_dir, rootfs->path);
 	if (!aux) {
@@ -1279,35 +1269,30 @@ static int mount_entry_on_absolute_rootfs(struct mntent *mntent,
 		 aux + strlen(rootfs->path));
 
 	ret = mount_entry(mntent->mnt_fsname, path, mntent->mnt_type,
-			  mntflags, mntdata);
+			  mo);
 
 out:
-	free(mntdata);
 	return ret;
 }
 
-static int mount_entry_on_relative_rootfs(struct mntent *mntent,
+static int mount_entry_on_relative_rootfs(struct mntent *mntent, const struct mount_option_state_t *const mo,
 					  const char *rootfs)
 {
 	char path[MAXPATHLEN];
-	unsigned long mntflags;
-	char *mntdata;
 	int ret;
-
-	if (parse_mntopts(mntent->mnt_opts, &mntflags, &mntdata) < 0) {
-		ERROR("failed to parse mount option '%s'", mntent->mnt_opts);
-		return -1;
-	}
 
         /* relative to root mount point */
 	snprintf(path, sizeof(path), "%s/%s", rootfs, mntent->mnt_dir);
 
 	ret = mount_entry(mntent->mnt_fsname, path, mntent->mnt_type,
-			  mntflags, mntdata);
-
-	free(mntdata);
+			  mo);
 
 	return ret;
+}
+
+static void free_mount_option_state(struct mount_option_state_t *const mo)
+{
+	free(mo->data);
 }
 
 static int mount_file_entries(const struct lxc_rootfs *rootfs, FILE *file)
@@ -1316,29 +1301,32 @@ static int mount_file_entries(const struct lxc_rootfs *rootfs, FILE *file)
 	int ret = -1;
 
 	while ((mntent = getmntent(file))) {
-
-		if (!rootfs->path) {
-			if (mount_entry_on_systemfs(mntent))
-				goto out;
-			continue;
+		struct mount_option_state_t mo;
+		if (parse_mntopts(mntent->mnt_opts, &mo) < 0) {
+			ERROR("failed to parse mount option '%s'", mntent->mnt_opts);
+			return -1;
 		}
+
+		int rcmnt;
+		if (!rootfs->path) {
+			rcmnt = mount_entry_on_systemfs(mntent, &mo);
+		}
+		else
 
 		/* We have a separate root, mounts are relative to it */
 		if (mntent->mnt_dir[0] != '/') {
-			if (mount_entry_on_relative_rootfs(mntent,
-							   rootfs->mount))
-				goto out;
-			continue;
+			rcmnt = mount_entry_on_relative_rootfs(mntent, &mo, rootfs->mount);
 		}
-
-		if (mount_entry_on_absolute_rootfs(mntent, rootfs))
-			goto out;
+		else
+			rcmnt = mount_entry_on_absolute_rootfs(mntent, &mo, rootfs);
+		free_mount_option_state(&mo);
+		if (rcmnt)
+			return rcmnt;
 	}
 
 	ret = 0;
 
 	INFO("mount points have been setup");
-out:
 	return ret;
 }
 
