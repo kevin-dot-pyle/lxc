@@ -41,6 +41,7 @@ enum lxc_network_type_t {
 };
 
 enum lxc_netns_open_mode_t {
+	LXC_NETNS_CREATE_OPEN,
 	LXC_NETNS_OPEN,
 };
 

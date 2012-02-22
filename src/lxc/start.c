@@ -33,10 +33,12 @@
 #include <signal.h>
 #include <fcntl.h>
 #include <termios.h>
+#include <linux/magic.h>
 #include <sys/param.h>
 #include <sys/file.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
+#include <sys/statfs.h>
 #include <sys/types.h>
 #include <sys/prctl.h>
 #include <sys/types.h>
@@ -549,6 +551,90 @@ static int open_set_nspath(const char *netns_path)
 	return rcsn;
 }
 
+enum netns_check_result_t
+{
+	ncr_failure,
+	ncr_is_likely_netns,
+	ncr_is_tmpfs,
+};
+
+static int fd_is_netns(const char *p, const int fd)
+{
+	struct statfs buf;
+	memset(&buf, 0, sizeof(buf));
+	const int rcsf = fstatfs(fd, &buf);
+	if (rcsf)
+	{
+		SYSERROR("failed to fstatfs '%s'", p);
+		return ncr_failure;
+	}
+	if (buf.f_type == PROC_SUPER_MAGIC)
+		return ncr_is_likely_netns;
+	if (buf.f_type == TMPFS_MAGIC)
+		return ncr_is_tmpfs;
+	return ncr_failure;
+}
+
+static int maybe_open_set_nspath(const char *netns_path)
+{
+	const int fd = open(netns_path, O_RDONLY);
+	if (fd < 0)
+	{
+		if (errno == ENOENT)
+		{
+			DEBUG("netns path '%s' does not exist, will create later", netns_path);
+			return 1;
+		}
+		SYSERROR("failed to open netns path '%s'", netns_path);
+		return -1;
+	}
+	const int rcsn = setns(fd, CLONE_NEWNET);
+	if (!rcsn)
+	{
+		DEBUG("switched to existing netns, will not create one");
+		close(fd);
+		return rcsn;
+	}
+	const int e = errno;
+	const enum netns_check_result_t ncr = fd_is_netns(netns_path, fd);
+	close(fd);
+	if (ncr == ncr_failure || ncr == ncr_is_likely_netns)
+	{
+		ERROR("%s - failed to setns to netns '%s'", strerror(e), netns_path);
+		return rcsn;
+	}
+	if (ncr != ncr_is_tmpfs)
+		// This should not happen.
+		return rcsn;
+	const int rcunlink = unlink(netns_path);
+	if (rcunlink)
+	{
+		SYSERROR("failed to unlink stale netns '%s'", netns_path);
+	}
+	return rcunlink;
+}
+
+static int lxc_bind_netns(const struct lxc_conf *const conf, const pid_t pid)
+{
+	/*
+	 * Prior to creating the child, we checked for the file once and
+	 * switched the child to open mode if the file existed.  If the file
+	 * exists now, we raced with some other process, so panic and quit.
+	 */
+	const int fd = open(conf->netns_path, O_RDWR | O_CREAT | O_EXCL, 0600);
+	if (fd < 0) {
+		SYSERROR("failed to open netns path '%s'", conf->netns_path);
+		return -1;
+	}
+	close(fd);
+	char buf[64];
+	snprintf(buf, sizeof(buf), "/proc/%u/ns/net", pid);
+	const int rc = mount(buf, conf->netns_path, "none", MS_BIND, NULL);
+	if (rc)
+		SYSERROR("failed to mount-bind child netns path '%s' to '%s'", buf, conf->netns_path);
+	return rc;
+}
+
 int lxc_spawn(struct lxc_handler *handler)
 {
 	int clone_flags;
@@ -558,6 +644,10 @@ int lxc_spawn(struct lxc_handler *handler)
 	if (handler->conf->netns_path) {
 		const char *netns_path = handler->conf->netns_path;
 		if (lxc_list_empty(&handler->conf->network)) {
+			if (handler->conf->netns_open_mode == LXC_NETNS_CREATE_OPEN) {
+				ERROR("netns mode 'create' is incompatible with omitting a network configuration.");
+				return -1;
+			}
 			// Open the existing netns or die
 			if (open_set_nspath(netns_path))
 				return -1;
@@ -566,6 +656,17 @@ int lxc_spawn(struct lxc_handler *handler)
 				ERROR("netns mode 'open' is incompatible with specifying a network configuration.");
 				return -1;
 			}
+			/*
+			 * Open the specified netns path.  On success, switch to
+			 * open mode (on the assumption that a prior run of this
+			 * container prepared the network for us).  On failure,
+			 * create the child and then bind its netns to that path.
+			 */
+			const int rc = maybe_open_set_nspath(netns_path);
+			if (rc < 0)
+				return rc;
+			if (rc == 0)
+				handler->conf->netns_open_mode = LXC_NETNS_OPEN;
 		}
 	}
 
@@ -574,7 +675,7 @@ int lxc_spawn(struct lxc_handler *handler)
 
 	clone_flags = CLONE_NEWUTS|CLONE_NEWPID|CLONE_NEWIPC|CLONE_NEWNS;
 	clone_flags &= ~handler->conf->keep_ns;
-	if (!lxc_list_empty(&handler->conf->network)) {
+	if (!(handler->conf->netns_path && handler->conf->netns_open_mode == LXC_NETNS_OPEN) && !lxc_list_empty(&handler->conf->network)) {
 
 		clone_flags |= CLONE_NEWNET;
 
@@ -618,6 +719,10 @@ int lxc_spawn(struct lxc_handler *handler)
 
 	/* Create the network configuration */
 	if (clone_flags & CLONE_NEWNET) {
+		if (handler->conf->netns_path && handler->conf->netns_open_mode == LXC_NETNS_CREATE_OPEN) {
+			if (lxc_bind_netns(handler->conf, handler->pid))
+				goto out_delete_net;
+		}
 		if (lxc_assign_network(&handler->conf->network, handler->pid)) {
 			ERROR("failed to create the configured network");
 			goto out_delete_net;

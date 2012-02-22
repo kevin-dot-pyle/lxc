@@ -958,9 +958,11 @@ static int config_netns_mode(const char *key, char *value, struct lxc_conf *lxc_
 	enum lxc_netns_open_mode_t nom;
 	if (!strcmp(value, "open"))
 		nom = LXC_NETNS_OPEN;
+	else if (!strcmp(value, "create"))
+		nom = LXC_NETNS_CREATE_OPEN;
 	else
 	{
-		ERROR("Unhandled netns open mode '%s' (should be 'open')", value);
+		ERROR("Unhandled netns open mode '%s' (should be 'open' or 'create')", value);
 		return -1;
 	}
 	lxc_conf->netns_open_mode = nom;
