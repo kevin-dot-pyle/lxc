@@ -939,6 +939,34 @@ static int config_utsname(const char *key, char *value, struct lxc_conf *lxc_con
 	return 0;
 }
 
+static int config_netns_path(const char *key, char *value, struct lxc_conf *lxc_conf)
+{
+	if (strlen(value) >= MAXPATHLEN) {
+		ERROR("%s path is too long", value);
+		return -1;
+	}
+	lxc_conf->netns_path = strdup(value);
+	if (!lxc_conf->netns_path) {
+		SYSERROR("failed to duplicate string %s", value);
+		return -1;
+	}
+	return 0;
+}
+
+static int config_netns_mode(const char *key, char *value, struct lxc_conf *lxc_conf)
+{
+	enum lxc_netns_open_mode_t nom;
+	if (!strcmp(value, "open"))
+		nom = LXC_NETNS_OPEN;
+	else
+	{
+		ERROR("Unhandled netns open mode '%s' (should be 'open')", value);
+		return -1;
+	}
+	lxc_conf->netns_open_mode = nom;
+	return 0;
+}
+
 static int parse_line(char *buffer, void *data)
 {
 	const struct config *config;
@@ -1092,6 +1120,8 @@ static const struct config config[] = {
 	{ "lxc.rootfs",               config_rootfs               },
 	{ "lxc.pivotdir",             config_pivotdir             },
 	{ "lxc.utsname",              config_utsname              },
+	{ "lxc.netns.path",           config_netns_path           },
+	{ "lxc.netns.mode",           config_netns_mode           },
 	{ "lxc.network.type",         config_network_type         },
 	{ "lxc.network.flags",        config_network_flags        },
 	{ "lxc.network.link",         config_network_link         },

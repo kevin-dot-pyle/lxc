@@ -40,6 +40,10 @@ enum lxc_network_type_t {
 	LXC_NET_VLAN,
 };
 
+enum lxc_netns_open_mode_t {
+	LXC_NETNS_OPEN,
+};
+
 /*
  * Defines the structure to configure an ipv4 address
  * @address   : ipv4 address
@@ -211,6 +215,8 @@ struct lxc_conf {
 	int need_utmp_watch;
 	int personality;
 	unsigned keep_ns;
+	enum lxc_netns_open_mode_t netns_open_mode;
+	char *netns_path;
 	struct utsname *utsname;
 	struct lxc_list cgroup;
 	struct lxc_list network;

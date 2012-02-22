@@ -129,6 +129,8 @@ int signalfd(int fd, const sigset_t *mask, int flags)
 
 lxc_log_define(lxc_start, lxc);
 
+extern int setns(int fd, int nstype);
+
 static int match_fd(int fd)
 {
 	return (fd == 0 || fd == 1 || fd == 2);
@@ -530,11 +532,42 @@ out_warn_father:
 	return -1;
 }
 
+static int open_set_nspath(const char *netns_path)
+{
+	const int fd = open(netns_path, O_RDONLY);
+	if (fd < 0)
+	{
+		SYSERROR("failed to open netns path '%s'", netns_path);
+		return -1;
+	}
+	const int rcsn = setns(fd, CLONE_NEWNET);
+	if (rcsn)
+	{
+		SYSERROR("failed to setns to netns '%s'", netns_path);
+	}
+	close(fd);
+	return rcsn;
+}
+
 int lxc_spawn(struct lxc_handler *handler)
 {
 	int clone_flags;
 	int failed_before_rename = 0;
 	const char *name = handler->name;
+
+	if (handler->conf->netns_path) {
+		const char *netns_path = handler->conf->netns_path;
+		if (lxc_list_empty(&handler->conf->network)) {
+			// Open the existing netns or die
+			if (open_set_nspath(netns_path))
+				return -1;
+		} else {
+			if (handler->conf->netns_open_mode == LXC_NETNS_OPEN) {
+				ERROR("netns mode 'open' is incompatible with specifying a network configuration.");
+				return -1;
+			}
+		}
+	}
 
 	if (lxc_sync_init(&handler->sync_handler))
 		return -1;
