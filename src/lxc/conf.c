@@ -211,6 +211,16 @@ static const struct caps_opt caps_opt[] = {
 #endif
 };
 
+struct mount_file_entries_state_t
+{
+	int seen_remount;
+};
+
+static void finalize_mount_file_entries_state(struct mount_file_entries_state_t *const mfe)
+{
+	(void)mfe;
+}
+
 static int run_script(const char *name, const char *section,
 		      const char *script, ...)
 {
@@ -1295,7 +1305,129 @@ static void free_mount_option_state(struct mount_option_state_t *const mo)
 	free(mo->data);
 }
 
-static int mount_file_entries(const struct lxc_rootfs *rootfs, FILE *file)
+static int mkdirat_ignore_eexist(const int fd, const char *const dirname, const char *const basename, const mode_t st_mode)
+{
+	const int rcmkdir = mkdirat(fd, basename, st_mode);
+	if (!rcmkdir)
+	{
+		DEBUG("created directory mountpoint '%s'/'%s' %#o", dirname, basename, st_mode);
+		return 0;
+	}
+	if (errno == EEXIST)
+	{
+		DEBUG("directory already exists '%s'/'%s'", dirname, basename);
+		return 0;
+	}
+	SYSERROR("failed to mkdirat '%s'/'%s' %#o", dirname, basename, st_mode);
+	return -1;
+}
+
+static int openat_ignore_eexist(const int fd, const char *const dirname, const char *const basename, const mode_t st_mode)
+{
+	const int rc = openat(fd, basename, O_RDWR | O_CREAT, st_mode);
+	if (rc >= 0)
+	{
+		close(rc);
+		DEBUG("created file mountpoint '%s'/'%s' %#o", dirname, basename, st_mode);
+		return 0;
+	}
+	if (errno == EEXIST)
+	{
+		DEBUG("file already exists '%s'/'%s'", dirname, basename);
+		return 0;
+	}
+	SYSERROR("failed to openat '%s'/'%s' %#o", dirname, basename, st_mode);
+	return -1;
+}
+
+static int setup_rootfs_dev_console_mntpt(const int fd, const char *const dirname, const struct lxc_console *const console)
+{
+	if (console->peer == -1) {
+		DEBUG("no console output required, skipping probe of '%s'/dev/console", dirname);
+		return 0;
+	}
+	int rc;
+	rc = openat_ignore_eexist(fd, dirname, "console", S_IRUSR | S_IWUSR);
+	return rc;
+}
+
+static int setup_rootfs_dev_mountpoints_fd(const int fd, const char *const dirname, const struct lxc_console *const console)
+{
+	int rc;
+	rc = mkdirat_ignore_eexist(fd, dirname, "pts", 0);
+	if (rc)
+		return rc;
+	rc = mkdirat_ignore_eexist(fd, dirname, "shm", 0);
+	if (rc)
+		return rc;
+	rc = mkdirat_ignore_eexist(fd, dirname, "mqueue", 0);
+	if (rc)
+		return rc;
+	rc = setup_rootfs_dev_console_mntpt(fd, dirname, console);
+	return rc;
+}
+
+static int setup_rootfs_dev_mountpoints(const int fd, const char *const dirname, const struct lxc_console *const console)
+{
+	int rc;
+	/*
+	 * Allow all users to traverse /dev, in case the configuration does
+	 * not mount anything here.
+	 */
+	rc = mkdirat_ignore_eexist(fd, dirname, "dev", S_IXUSR | S_IXGRP | S_IXOTH);
+	if (rc)
+		return rc;
+	const int dfd = openat(fd, "dev", O_RDONLY);
+	if (dfd < 0) {
+		SYSERROR("failed to open-after-mkdir '%s'/'%s'", dirname, "dev");
+		return rc;
+	}
+	rc = setup_rootfs_dev_mountpoints_fd(dfd, dirname, console);
+	close(dfd);
+	return rc;
+}
+
+static int setup_rootfs_magic_directories_fd(const int fd, const char *const dirname, const struct lxc_console *const console)
+{
+	struct statfs buf;
+	memset(&buf, 0, sizeof(buf));
+	const int rcsf = fstatfs(fd, &buf);
+	if (rcsf)
+	{
+		WARN("failed to statfs '%s': %s", dirname, strerror(errno));
+		return 0;
+	}
+	if (buf.f_type != TMPFS_MAGIC)
+	{
+		DEBUG("rootfs not a tmpfs, skipping directory probes");
+		return 0;
+	}
+	int rc;
+	rc = setup_rootfs_dev_mountpoints(fd, dirname, console);
+	if (rc)
+		return rc;
+	rc = mkdirat_ignore_eexist(fd, dirname, "proc", 0);
+	if (rc)
+		return rc;
+	return 0;
+}
+
+static int setup_rootfs_magic_directories(const struct lxc_rootfs *const rootfs, const struct lxc_console *const console)
+{
+	if (!rootfs->path)
+		return 0;
+	const int fd = open(rootfs->path, O_RDONLY, 0);
+	if (fd < 0)
+	{
+		WARN("failed to open '%s': %s", rootfs->path, strerror(errno));
+		return 0;
+	}
+	const int rc = setup_rootfs_magic_directories_fd(fd, rootfs->path, console);
+	close(fd);
+	return rc;
+}
+
+static int mount_file_entries(const struct lxc_rootfs *rootfs, const struct lxc_console *const console, FILE *file, struct mount_file_entries_state_t *const mfe_state)
 {
 	struct mntent *mntent;
 	int ret = -1;
@@ -1305,6 +1437,18 @@ static int mount_file_entries(const struct lxc_rootfs *rootfs, FILE *file)
 		if (parse_mntopts(mntent->mnt_opts, &mo) < 0) {
 			ERROR("failed to parse mount option '%s'", mntent->mnt_opts);
 			return -1;
+		}
+		/*
+		 * A remount of the container rootfs could make it read-only, so
+		 * create the magic directories early if a remount is detected.
+		 */
+		if ((mo.flags & MS_REMOUNT) && !mfe_state->seen_remount)
+		{
+			mfe_state->seen_remount = 1;
+			if (setup_rootfs_magic_directories(rootfs, console)) {
+				free_mount_option_state(&mo);
+				return -1;
+			}
 		}
 
 		int rcmnt;
@@ -1330,7 +1474,7 @@ static int mount_file_entries(const struct lxc_rootfs *rootfs, FILE *file)
 	return ret;
 }
 
-static int setup_mount(const struct lxc_rootfs *rootfs, const char *fstab)
+static int setup_mount(const struct lxc_rootfs *rootfs, const struct lxc_console *const console, const char *fstab, struct mount_file_entries_state_t *const mfe_state)
 {
 	FILE *file;
 	int ret;
@@ -1344,13 +1488,13 @@ static int setup_mount(const struct lxc_rootfs *rootfs, const char *fstab)
 		return -1;
 	}
 
-	ret = mount_file_entries(rootfs, file);
+	ret = mount_file_entries(rootfs, console, file, mfe_state);
 
 	endmntent(file);
 	return ret;
 }
 
-static int setup_mount_entries(const struct lxc_rootfs *rootfs, struct lxc_list *mount)
+static int setup_mount_entries(const struct lxc_rootfs *rootfs, const struct lxc_console *const console, struct lxc_list *mount, struct mount_file_entries_state_t *const mfe_state)
 {
 	FILE *file;
 	struct lxc_list *iterator;
@@ -1370,7 +1514,7 @@ static int setup_mount_entries(const struct lxc_rootfs *rootfs, struct lxc_list 
 
 	rewind(file);
 
-	ret = mount_file_entries(rootfs, file);
+	ret = mount_file_entries(rootfs, console, file, mfe_state);
 
 	fclose(file);
 	return ret;
@@ -2165,14 +2309,27 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
 		return -1;
 	}
 
-	if (setup_mount(&lxc_conf->rootfs, lxc_conf->fstab)) {
+	struct mount_file_entries_state_t mfe_state;
+	memset(&mfe_state, 0, sizeof(mfe_state));
+	if (setup_mount(&lxc_conf->rootfs, &lxc_conf->console, lxc_conf->fstab, &mfe_state)) {
 		ERROR("failed to setup the mounts for '%s'", name);
 		return -1;
 	}
 
-	if (setup_mount_entries(&lxc_conf->rootfs, &lxc_conf->mount_list)) {
+	if (setup_mount_entries(&lxc_conf->rootfs, &lxc_conf->console, &lxc_conf->mount_list, &mfe_state)) {
 		ERROR("failed to setup the mount entries for '%s'", name);
 		return -1;
+	}
+	int need_setup_rootfs_magic = 0;
+	if (!mfe_state.seen_remount)
+		need_setup_rootfs_magic = 1;
+	finalize_mount_file_entries_state(&mfe_state);
+	if (need_setup_rootfs_magic)
+	{
+		if (setup_rootfs_magic_directories(&lxc_conf->rootfs, &lxc_conf->console))
+		{
+			return -1;
+		}
 	}
 
 	if (setup_cgroup(name, &lxc_conf->cgroup)) {
