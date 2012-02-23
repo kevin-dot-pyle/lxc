@@ -160,7 +160,6 @@ static struct mount_opt mount_opt[] = {
 	{ "norelatime",    1, MS_RELATIME    },
 	{ "strictatime",   0, MS_STRICTATIME },
 	{ "nostrictatime", 1, MS_STRICTATIME },
-	{ NULL,            0, 0              },
 };
 
 static struct caps_opt caps_opt[] = {
@@ -1001,7 +1000,7 @@ static void parse_mntopt(char *opt, unsigned long *flags, char **data)
 	/* If opt is found in mount_opt, set or clear flags.
 	 * Otherwise append it to data. */
 
-	for (mo = &mount_opt[0]; mo->name != NULL; mo++) {
+	for (mo = mount_opt; mo != (mount_opt + (sizeof(mount_opt) / sizeof(mount_opt[0]))); ++mo) {
 		if (!strncmp(opt, mo->name, strlen(mo->name))) {
 			if (mo->clear)
 				*flags &= ~mo->flag;
