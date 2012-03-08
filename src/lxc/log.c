@@ -68,12 +68,14 @@ static int log_append_logfile(const struct lxc_log_appender *appender,
 		return 0;
 
 	n = snprintf(buffer, sizeof(buffer),
-		     "%15s %10ld.%03ld %-8s %s - ",
+		     "%15s %10ld.%03ld %-8s %s %s:%u - ",
 		     log_prefix,
 		     event->timestamp.tv_sec,
 		     event->timestamp.tv_usec / 1000,
 		     lxc_log_priority_to_string(event->priority),
-		     event->category);
+		     event->category,
+			 event->locinfo->func,
+			 event->locinfo->line);
 
 	n += vsnprintf(buffer + n, sizeof(buffer) - n, event->fmt,
 		       *event->vap);
