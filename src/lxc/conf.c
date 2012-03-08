@@ -1231,7 +1231,7 @@ static int mount_entry(const char *fsname, const char *target,
 {
 	const unsigned long mountflags = mo->flags;
 	const char *const data = mo->data;
-	if (mount_or_make(fsname, target, fstype, mountflags & ~MS_REMOUNT, data)) {
+	if (!(mountflags & MS_REMOUNT) && mount_or_make(fsname, target, fstype, mountflags, data)) {
 		return -1;
 	}
 
