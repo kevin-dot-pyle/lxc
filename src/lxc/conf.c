@@ -782,7 +782,18 @@ static int setup_cwd_rootfs(const struct lxc_rootfs *rootfs)
 int setup_pivot_root(const struct lxc_rootfs *rootfs)
 {
 	if (!rootfs->path)
+	{
+		/*
+		 * If a pivot were performed, then the current directory would
+		 * be the new root.  For consistency, ensure that the current
+		 * directory is always root after setup_pivot_root returns.
+		 */
+		if (chdir("/")) {
+			SYSERROR("can't chdir to /");
+			return -1;
+		}
 		return 0;
+	}
 
 	if (setup_rootfs_pivot_root(rootfs->mount, rootfs->pivot)) {
 		ERROR("failed to setup pivot root");
@@ -799,29 +810,29 @@ static int setup_pts(int pts)
 	if (!pts)
 		return 0;
 
-	if (!access("/dev/pts/ptmx", F_OK) && umount("/dev/pts")) {
+	if (!access("dev/pts/ptmx", F_OK) && umount("dev/pts")) {
 		SYSERROR("failed to umount 'dev/pts'");
 		return -1;
 	}
 
-	if (mount("devpts", "/dev/pts", "devpts", MS_MGC_VAL,
+	if (mount("devpts", "dev/pts", "devpts", MS_MGC_VAL,
 		  "newinstance,ptmxmode=0666")) {
 		SYSERROR("failed to mount a new instance of '/dev/pts'");
 		return -1;
 	}
 
-	if (access("/dev/ptmx", F_OK)) {
-		if (!symlink("/dev/pts/ptmx", "/dev/ptmx"))
+	if (access("dev/ptmx", F_OK)) {
+		if (!symlink("/dev/pts/ptmx", "dev/ptmx"))
 			goto out;
 		SYSERROR("failed to symlink '/dev/pts/ptmx'->'/dev/ptmx'");
 		return -1;
 	}
 
-	if (realpath("/dev/ptmx", target) && !strcmp(target, "/dev/pts/ptmx"))
+	if (realpath("dev/ptmx", target) && !strcmp(target, "/dev/pts/ptmx"))
 		goto out;
 
 	/* fallback here, /dev/pts/ptmx exists just mount bind */
-	if (mount("/dev/pts/ptmx", "/dev/ptmx", "none", MS_BIND, 0)) {
+	if (mount("dev/pts/ptmx", "dev/ptmx", "none", MS_BIND, 0)) {
 		SYSERROR("mount failed '/dev/pts/ptmx'->'/dev/ptmx'");
 		return -1;
 	}
