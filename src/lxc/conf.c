@@ -779,19 +779,6 @@ static int setup_cwd_rootfs(const struct lxc_rootfs *rootfs)
 	return 0;
 }
 
-int setup_pivot_root(const struct lxc_rootfs *rootfs)
-{
-	if (!rootfs->path)
-		return 0;
-
-	if (setup_rootfs_pivot_root(rootfs->mount, rootfs->pivot)) {
-		ERROR("failed to setup pivot root");
-		return -1;
-	}
-
-	return 0;
-}
-
 static int setup_pts(int pts)
 {
 	char target[PATH_MAX];
@@ -2054,7 +2041,7 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
 		return -1;
 	}
 
-	if (setup_pivot_root(&lxc_conf->rootfs)) {
+	if (lxc_conf->rootfs.path && setup_rootfs_pivot_root(lxc_conf->rootfs.mount, lxc_conf->rootfs.pivot)) {
 		ERROR("failed to set rootfs for '%s'", name);
 		return -1;
 	}
