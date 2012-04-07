@@ -782,18 +782,7 @@ static int setup_cwd_rootfs(const struct lxc_rootfs *rootfs)
 int setup_pivot_root(const struct lxc_rootfs *rootfs)
 {
 	if (!rootfs->path)
-	{
-		/*
-		 * If a pivot were performed, then the current directory would
-		 * be the new root.  For consistency, ensure that the current
-		 * directory is always root after setup_pivot_root returns.
-		 */
-		if (chdir("/")) {
-			SYSERROR("can't chdir to /");
-			return -1;
-		}
 		return 0;
-	}
 
 	if (setup_rootfs_pivot_root(rootfs->mount, rootfs->pivot)) {
 		ERROR("failed to setup pivot root");
@@ -2060,13 +2049,13 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
 		return -1;
 	}
 
-	if (setup_pivot_root(&lxc_conf->rootfs)) {
-		ERROR("failed to set rootfs for '%s'", name);
+	if (setup_pts(lxc_conf->pts)) {
+		ERROR("failed to setup the new pts instance");
 		return -1;
 	}
 
-	if (setup_pts(lxc_conf->pts)) {
-		ERROR("failed to setup the new pts instance");
+	if (setup_pivot_root(&lxc_conf->rootfs)) {
+		ERROR("failed to set rootfs for '%s'", name);
 		return -1;
 	}
 
