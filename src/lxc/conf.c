@@ -692,30 +692,26 @@ static int umount_oldrootfs(const char *oldrootfs)
 
 static int setup_rootfs_pivot_root(const char *rootfs, const char *pivotdir)
 {
-	char path[MAXPATHLEN];
 	int remove_pivotdir = 0;
 
 	if (!pivotdir)
 		pivotdir = "mnt";
 
-	/* compute the full path to pivotdir under rootfs */
-	snprintf(path, sizeof(path), "%s/%s", rootfs, pivotdir);
+	if (access(pivotdir, F_OK)) {
 
-	if (access(path, F_OK)) {
-
-		if (mkdir_p(path, 0755)) {
-			SYSERROR("failed to create pivotdir '%s'", path);
+		if (mkdir_p(pivotdir, 0755)) {
+			SYSERROR("failed to create pivotdir '%s'", pivotdir);
 			return -1;
 		}
 
 		remove_pivotdir = 1;
-		DEBUG("created '%s' directory", path);
+		DEBUG("created '%s' directory", pivotdir);
 	}
 
-	DEBUG("mountpoint for old rootfs is '%s'", path);
+	DEBUG("mountpoint for old rootfs is '%s'", pivotdir);
 
 	/* pivot_root into our new root fs */
-	if (pivot_root(".", path)) {
+	if (pivot_root(".", pivotdir)) {
 		SYSERROR("pivot_root syscall failed");
 		return -1;
 	}
