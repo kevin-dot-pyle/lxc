@@ -61,6 +61,7 @@ static int execute_start(struct lxc_handler *handler, void* data)
 	extra_argc = plan_arg_str(extra_argc, my_args->uid);
 	extra_argc = plan_arg_str(extra_argc, my_args->gid);
 	extra_argc = plan_arg_str(extra_argc, my_args->gidlist);
+	extra_argc = plan_arg_str(extra_argc, my_args->pivot);
 
 	/*
 	 * 3 = "lxc-init" + "--" + NULL
@@ -76,6 +77,7 @@ static int execute_start(struct lxc_handler *handler, void* data)
 	i = add_arg_str(argv, i, "--uid", my_args->uid);
 	i = add_arg_str(argv, i, "--gid", my_args->gid);
 	i = add_arg_str(argv, i, "--gidlist", my_args->gidlist);
+	i = add_arg_str(argv, i, "--pivot", my_args->pivot);
 	argv[i++] = "--";
 	for (j = 0; j < argc; j++)
 		argv[i++] = my_args->argv[j];

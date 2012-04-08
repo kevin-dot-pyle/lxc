@@ -134,7 +134,13 @@ int main(int argc, char *argv[])
 		.gid = my_args.gid,
 		.gidlist = my_args.gidlist,
 		.argv = my_args.argv,
+		.pivot = NULL,
 		.quiet = my_args.quiet,
 	};
+
+	if (conf->rootfs.path)
+	{
+		ea.pivot = conf->rootfs.pivot ? conf->rootfs.pivot : "mnt";
+	}
 	return lxc_execute(&ea, my_args.name, conf);
 }

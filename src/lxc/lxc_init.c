@@ -42,6 +42,8 @@
 
 lxc_log_define(lxc_init, lxc);
 
+int setup_rootfs_pivot_root(const char *pivotdir);
+
 static int quiet;
 
 static struct option options[] = {
@@ -50,6 +52,7 @@ static struct option options[] = {
 	{ "gidlist", required_argument, 0, 'G' },
 	{ "quiet", no_argument, &quiet, 1 },
 	{ "uid", required_argument, 0, 'u' },
+	{ "pivot", required_argument, 0, 'P' },
 	{ 0, 0, 0, 0 },
 };
 
@@ -119,6 +122,7 @@ int main(int argc, char *argv[])
 	gid_t ngid = 0;
 	size_t gidcount = 0;
 	gid_t *gidlist = NULL;
+	const char *pivot = NULL;
 	char *p;
 	int syncpipe[2];
 
@@ -146,6 +150,9 @@ int main(int argc, char *argv[])
 		if (ret == 'u') {
 			uid = optarg;
 			continue;
+		}
+		if (ret == 'P') {
+			pivot = optarg;
 		}
 		if  (ret == '?')
 			exit(err);
@@ -176,6 +183,10 @@ int main(int argc, char *argv[])
 			ERROR("gid must be numeric");
 			exit(err);
 		}
+	}
+	if (pivot && setup_rootfs_pivot_root(pivot)) {
+		ERROR("pivot_root failed");
+		exit(err);
 	}
 
 	aargv = &argv[optind];

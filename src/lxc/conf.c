@@ -482,6 +482,13 @@ static int mount_rootfs(const char *rootfs, const char *target)
 			ERROR("unsupported rootfs type for '%s'", absrootfs);
 			return -1;
 	}
+	if (i)
+		return i;
+	/* change into new root fs */
+	if (chdir(target)) {
+		SYSERROR("can't chdir to new rootfs '%s'", target);
+		return -1;
+	}
 	return i;
 }
 
@@ -690,12 +697,9 @@ static int umount_oldrootfs(const char *oldrootfs)
 	return 0;
 }
 
-static int setup_rootfs_pivot_root(const char *rootfs, const char *pivotdir)
+int setup_rootfs_pivot_root(const char *pivotdir)
 {
 	int remove_pivotdir = 0;
-
-	if (!pivotdir)
-		pivotdir = "mnt";
 
 	if (access(pivotdir, F_OK)) {
 
@@ -726,7 +730,7 @@ static int setup_rootfs_pivot_root(const char *rootfs, const char *pivotdir)
 		return -1;
 	}
 
-	DEBUG("pivot_root syscall to '%s' successful", rootfs);
+	DEBUG("pivot_root syscall successful");
 
 	/* we switch from absolute path to relative path */
 	if (umount_oldrootfs(pivotdir))
@@ -2034,11 +2038,6 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
 
 	if (setup_pts(lxc_conf->pts)) {
 		ERROR("failed to setup the new pts instance");
-		return -1;
-	}
-
-	if (lxc_conf->rootfs.path && setup_rootfs_pivot_root(lxc_conf->rootfs.mount, lxc_conf->rootfs.pivot)) {
-		ERROR("failed to set rootfs for '%s'", name);
 		return -1;
 	}
 

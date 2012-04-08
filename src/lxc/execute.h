@@ -11,6 +11,7 @@ struct lxc_execute_args {
 	const char *gid;
 	const char *gidlist;
 	char *const *argv;
+	const char *pivot;
 	int quiet;
 };
 
