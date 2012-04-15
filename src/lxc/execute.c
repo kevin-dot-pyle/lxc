@@ -25,20 +25,16 @@
 #include <unistd.h>
 #include <stdlib.h>
 
+#include "execute.h"
 #include "log.h"
 #include "start.h"
 
 lxc_log_define(lxc_execute, lxc_start);
 
-struct execute_args {
-	char *const *argv;
-	int quiet;
-};
-
 static int execute_start(struct lxc_handler *handler, void* data)
 {
 	int j, i = 0;
-	struct execute_args *my_args = data;
+	struct lxc_execute_args *my_args = data;
 	char **argv;
 	int argc = 0;
 
@@ -68,7 +64,7 @@ static int execute_start(struct lxc_handler *handler, void* data)
 
 static int execute_post_start(struct lxc_handler *handler, void* data)
 {
-	struct execute_args *my_args = data;
+	struct lxc_execute_args *my_args = data;
 	NOTICE("'%s' started with pid '%d'", my_args->argv[0], handler->pid);
 	return 0;
 }
@@ -78,16 +74,11 @@ static struct lxc_operations execute_start_ops = {
 	.post_start = execute_post_start
 };
 
-int lxc_execute(const char *name, char *const argv[], int quiet,
+int lxc_execute(struct lxc_execute_args *args, const char *name,
 		struct lxc_conf *conf)
 {
-	struct execute_args args = {
-		.argv = argv,
-		.quiet = quiet
-	};
-
 	if (lxc_check_inherited(conf, -1))
 		return -1;
 
-	return __lxc_start(name, conf, &execute_start_ops, &args);
+	return __lxc_start(name, conf, &execute_start_ops, args);
 }

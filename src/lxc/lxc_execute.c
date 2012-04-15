@@ -32,6 +32,7 @@
 #include <sys/param.h>
 
 #include "caps.h"
+#include "execute.h"
 #include "lxc.h"
 #include "log.h"
 #include "conf.h"
@@ -136,5 +137,9 @@ int main(int argc, char *argv[])
 	if (lxc_config_define_load(&defines, conf))
 		return -1;
 
-	return lxc_execute(my_args.name, my_args.argv, my_args.quiet, conf);
+	struct lxc_execute_args ea = {
+		.argv = my_args.argv,
+		.quiet = my_args.quiet,
+	};
+	return lxc_execute(&ea, my_args.name, conf);
 }

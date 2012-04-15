@@ -33,6 +33,7 @@ extern "C" {
 struct lxc_msg;
 struct lxc_conf;
 struct lxc_arguments;
+struct lxc_execute_args;
 
 /**
  Following code is for liblxc.
@@ -65,7 +66,7 @@ extern int lxc_stop(const char *name);
  * @conf     : configuration
  * Returns 0 on sucess, < 0 otherwise
  */
-extern int lxc_execute(const char *name, char *const argv[], int quiet,
+extern int lxc_execute(struct lxc_execute_args *ea, const char *name,
 		       struct lxc_conf *conf);
 
 /*
