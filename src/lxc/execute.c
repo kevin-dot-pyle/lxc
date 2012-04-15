@@ -44,7 +44,10 @@ static int execute_start(struct lxc_handler *handler, void* data)
 
 	while (my_args->argv[argc++]);
 
-	argv = malloc((argc + my_args->quiet ? 5 : 4) * sizeof(*argv));
+	/*
+	 * 3 = "lxc-init" + "--" + NULL
+	 */
+	argv = malloc((argc + 3 + (my_args->quiet ? 1 : 0)) * sizeof(*argv));
 	if (!argv)
 		return 1;
 
