@@ -171,6 +171,9 @@ extern int mkdir_p(char *dir, mode_t mode)
         int ret;
         char *d;
 
+        if (!strcmp(dir, "."))
+                return 0;
+
         if (!strcmp(dir, "/"))
                 return 0;
 
