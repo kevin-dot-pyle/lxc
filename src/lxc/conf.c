@@ -737,6 +737,11 @@ static int setup_rootfs_pivot_root(const char *rootfs, const char *pivotdir)
 		return -1;
 	}
 
+	if (chroot(".")) {
+		SYSERROR("can't chroot to . after pivot_root");
+		return -1;
+	}
+
 	if (chdir("/")) {
 		SYSERROR("can't chdir to / after pivot_root");
 		return -1;
