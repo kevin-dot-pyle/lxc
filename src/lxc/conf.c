@@ -457,24 +457,8 @@ static int mount_rootfs(const char *rootfs, const char *target)
 	struct stat s;
 	int i;
 
-	typedef int (*rootfs_cb)(const char *, const char *);
-
-	struct rootfs_type {
-		int type;
-		rootfs_cb cb;
-	} rtfs_type[] = {
-		{ S_IFDIR, mount_rootfs_dir },
-		{ S_IFBLK, mount_rootfs_block },
-		{ S_IFREG, mount_rootfs_file },
-	};
-
 	if (!realpath(rootfs, absrootfs)) {
 		SYSERROR("failed to get real path for '%s'", rootfs);
-		return -1;
-	}
-
-	if (access(absrootfs, F_OK)) {
-		SYSERROR("'%s' is not accessible", absrootfs);
 		return -1;
 	}
 
@@ -483,16 +467,22 @@ static int mount_rootfs(const char *rootfs, const char *target)
 		return -1;
 	}
 
-	for (i = 0; i < sizeof(rtfs_type)/sizeof(rtfs_type[0]); i++) {
-
-		if (!__S_ISTYPE(s.st_mode, rtfs_type[i].type))
-			continue;
-
-		return rtfs_type[i].cb(absrootfs, target);
+	switch(s.st_mode & S_IFMT)
+	{
+		case S_IFDIR:
+			i = mount_rootfs_dir(absrootfs, target);
+			break;
+		case S_IFBLK:
+			i = mount_rootfs_block(absrootfs, target);
+			break;
+		case S_IFREG:
+			i = mount_rootfs_file(absrootfs, target);
+			break;
+		default:
+			ERROR("unsupported rootfs type for '%s'", absrootfs);
+			return -1;
 	}
-
-	ERROR("unsupported rootfs type for '%s'", absrootfs);
-	return -1;
+	return i;
 }
 
 static int setup_utsname(struct utsname *utsname)
