@@ -186,10 +186,9 @@ extern int mkdir_p(char *dir, mode_t mode)
         if (ret)
                 return -1;
 
-        if (!access(dir, F_OK))
-                return 0;
-
         if (mkdir(dir, mode)) {
+                if (errno == EEXIST)
+                    return 0;
                 SYSERROR("failed to create directory '%s'\n", dir);
                 return -1;
         }
