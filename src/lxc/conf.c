@@ -695,12 +695,6 @@ static int setup_rootfs_pivot_root(const char *rootfs, const char *pivotdir)
 	char path[MAXPATHLEN];
 	int remove_pivotdir = 0;
 
-	/* change into new root fs */
-	if (chdir(rootfs)) {
-		SYSERROR("can't chdir to new rootfs '%s'", rootfs);
-		return -1;
-	}
-
 	if (!pivotdir)
 		pivotdir = "mnt";
 
@@ -768,6 +762,20 @@ static int setup_rootfs(const struct lxc_rootfs *rootfs)
 
 	DEBUG("mounted '%s' on '%s'", rootfs->path, rootfs->mount);
 
+	return 0;
+}
+
+static int setup_cwd_rootfs(const struct lxc_rootfs *rootfs)
+{
+	/*
+	 * Yes, compare one value and then use another.  This is the logic
+	 * used when pivoting, so match it here.
+	 */
+	const char *const path = ((rootfs->path != NULL) ? rootfs->mount : "/");
+	if (chdir(path)) {
+		SYSERROR("can't chdir to new rootfs '%s'", path);
+		return -1;
+	}
 	return 0;
 }
 
@@ -2034,6 +2042,10 @@ int lxc_setup(const char *name, struct lxc_conf *lxc_conf)
 
 	if (setup_tty(&lxc_conf->rootfs, &lxc_conf->tty_info, lxc_conf->ttydir)) {
 		ERROR("failed to setup the ttys for '%s'", name);
+		return -1;
+	}
+
+	if (setup_cwd_rootfs(&lxc_conf->rootfs)) {
 		return -1;
 	}
 
