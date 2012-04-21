@@ -209,7 +209,10 @@ int lxc_af_unix_send_credential(int fd, void *data, size_t size)
         msg.msg_iov = &iov;
         msg.msg_iovlen = 1;
 
-        return sendmsg(fd, &msg, 0);
+	const int ret = sendmsg(fd, &msg, 0);
+	if (ret < 0)
+		return -errno;
+	return ret;
 }
 
 int lxc_af_unix_rcv_credential(int fd, void *data, size_t size)
