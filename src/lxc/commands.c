@@ -81,12 +81,13 @@ static int __lxc_command(const char *name, struct lxc_command *command,
 	sock = lxc_af_unix_connect(path);
 	if (sock < 0 && errno == ECONNREFUSED) {
 		*stopped = 1;
-		return -1;
+		return -ECONNREFUSED;
 	}
 
 	if (sock < 0) {
+		const int e = errno;
 		SYSERROR("failed to connect to '@%s'", offset);
-		return -1;
+		return -e;
 	}
 
 	ret = lxc_af_unix_send_credential(sock, &command->request,
