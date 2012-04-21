@@ -1500,6 +1500,8 @@ static int setup_mount_entries(const struct lxc_rootfs *rootfs, const struct lxc
 	struct lxc_list *iterator;
 	char *mount_entry;
 	int ret;
+	if (lxc_list_empty(mount))
+		return 0;
 
 	file = tmpfile();
 	if (!file) {
