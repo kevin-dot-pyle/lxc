@@ -158,6 +158,8 @@ int lxc_af_unix_recv_fd(int fd, int *recvfd, void *data, size_t size)
         msg.msg_iovlen = 1;
 
 	ret = recvmsg(fd, &msg, 0);
+	if (ret < 0)
+		return -errno;
 	if (ret <= 0)
 		goto out;
 
