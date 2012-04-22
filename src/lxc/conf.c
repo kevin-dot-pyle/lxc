@@ -404,11 +404,15 @@ static int mount_rootfs_file(const char *rootfs, const char *target)
 	struct loop_info64 loinfo;
 	int ret = -1, fd = -1;
 	DIR *dir;
-	char path[MAXPATHLEN];
 
 	dir = opendir("/dev");
 	if (!dir) {
 		SYSERROR("failed to open '/dev'");
+		return -1;
+	}
+	if (fchdir(dirfd(dir))) {
+		SYSERROR("failed to chdir '/dev'");
+		closedir(dir);
 		return -1;
 	}
 
@@ -426,7 +430,7 @@ static int mount_rootfs_file(const char *rootfs, const char *target)
 		if (strncmp(direntp->d_name, "loop", 4))
 			continue;
 
-		sprintf(path, "/dev/%s", direntp->d_name);
+		const char *const path = direntp->d_name;
 		fd = open(path, O_RDWR);
 		if (fd < 0)
 			continue;
