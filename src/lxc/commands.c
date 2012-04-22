@@ -282,13 +282,14 @@ extern int lxc_command_mainloop_add(const char *name,
 			ERROR("# The container appears to be already running!");
 			ERROR("##");
 		}
-		return -1;
+		return fd;
 	}
 
 	if (fcntl(fd, F_SETFD, FD_CLOEXEC)) {
+		const int e = -errno;
 		SYSERROR("failed to set sigfd to close-on-exec");
 		close(fd);
-		return -1;
+		return e;
 	}
 
 	ret = lxc_mainloop_add_handler(descr, fd, incoming_command_handler,
