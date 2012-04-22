@@ -443,6 +443,7 @@ static int mount_rootfs_file(const char *rootfs, const char *target)
 		if (errno != ENXIO) {
 			WARN("unexpected error for ioctl on '%s': %m",
 			     direntp->d_name);
+			close(fd);
 			continue;
 		}
 
