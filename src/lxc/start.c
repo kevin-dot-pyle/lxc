@@ -230,7 +230,7 @@ static int signal_handler(int fd, void *data,
 	}
 
 	if (ret != sizeof(siginfo)) {
-		ERROR("unexpected siginfo size");
+		ERROR("unexpected siginfo size: got %u, expected %u", ret, sizeof(siginfo));
 		return -1;
 	}
 
@@ -240,17 +240,21 @@ static int signal_handler(int fd, void *data,
 		return 0;
 	}
 
-	if (siginfo.ssi_code == CLD_STOPPED ||
-	    siginfo.ssi_code == CLD_CONTINUED) {
-		INFO("container init process was stopped/continued");
-		return 0;
-	}
-
 	/* more robustness, protect ourself from a SIGCHLD sent
 	 * by a process different from the container init
 	 */
 	if (siginfo.ssi_pid != *pid) {
-		WARN("invalid pid for SIGCHLD");
+		WARN("invalid pid for SIGCHLD: got %u, expected %u", siginfo.ssi_pid, *pid);
+		return 0;
+	}
+
+	if (siginfo.ssi_code == CLD_CONTINUED) {
+		INFO("container init process was continued");
+		return 0;
+	}
+
+	if (siginfo.ssi_code == CLD_STOPPED) {
+		INFO("container init process was stopped");
 		return 0;
 	}
 
