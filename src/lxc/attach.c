@@ -42,7 +42,10 @@
 #include "cgroup.h"
 #include "config.h"
 
-#include "setns.h"
+/*
+ * For __NR_setns
+ */
+#include <asm/unistd.h>
 
 lxc_log_define(lxc_attach, lxc);
 
